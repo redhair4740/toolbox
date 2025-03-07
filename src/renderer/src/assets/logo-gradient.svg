@@ -1,0 +1,28 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 定义渐变 -->
+  <defs>
+    <linearGradient id="gradientBlue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1890FF" />
+      <stop offset="100%" stop-color="#409EFF" />
+    </linearGradient>
+    <linearGradient id="gradientBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#409EFF" stop-opacity="0.1" />
+      <stop offset="100%" stop-color="#1890FF" stop-opacity="0.2" />
+    </linearGradient>
+  </defs>
+
+  <!-- 背景 -->
+  <rect x="10" y="10" width="180" height="180" rx="20" fill="url(#gradientBg)" />
+  
+  <!-- 字母装饰 -->
+  <rect x="30" y="30" width="140" height="140" rx="15" stroke="url(#gradientBlue)" stroke-width="2" stroke-dasharray="2 4" />
+  
+  <!-- "Y" 字母 - 样式化 -->
+  <path d="M60 60L80 80V120M40 60L80 100L120 60" stroke="url(#gradientBlue)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" />
+  
+  <!-- "O" 字母 - 样式化 -->
+  <circle cx="130" cy="100" r="30" stroke="url(#gradientBlue)" stroke-width="10" />
+  
+  <!-- 装饰点 -->
+  <circle cx="160" cy="40" r="10" fill="url(#gradientBlue)" />
+</svg> 

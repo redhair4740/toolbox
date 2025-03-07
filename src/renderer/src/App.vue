@@ -3,8 +3,8 @@
     <!-- 侧边导航 -->
     <div class="sidebar" :class="{ 'sidebar-collapsed': isSidebarCollapsed }">
       <div class="logo">
-        <img src="./assets/logo.png" alt="YO工具箱" class="logo-image" />
-        <span v-if="!isSidebarCollapsed" class="logo-text">YO工具箱</span>
+        <img src="./assets/logo-gradient.svg" alt="YO工具箱" class="logo-image" />
+        <!-- <span v-if="!isSidebarCollapsed" class="logo-text">工具箱</span> -->
       </div>
 
       <div class="nav-items">

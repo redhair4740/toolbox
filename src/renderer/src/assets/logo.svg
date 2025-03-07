@@ -1,0 +1,19 @@
+<svg width="330" height="200" viewBox="0 0 330 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景圆形 -->
+  <circle cx="100" cy="100" r="90" fill="#409EFF" opacity="0.1"/>
+  <circle cx="100" cy="100" r="85" stroke="#409EFF" stroke-width="3"/>
+  
+  <!-- "y" 字母 -->
+  <path d="M55 55C65 55 75 60 75 75V95C75 105 70 110 60 110H50V90H55C57.5 90 58.5 88.5 58.5 85V80C58.5 75 56.6667 70 50 70C43.3333 70 41.5 75 41.5 80V125C41.5 135 46.5 140 56.5 140H60" 
+        stroke="#409EFF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- "o" 字母 -->
+  <circle cx="130" cy="90" r="30" stroke="#409EFF" stroke-width="12"/>
+  
+  <!-- 点缀装饰 -->
+  <circle cx="170" cy="60" r="8" fill="#409EFF"/>
+  <circle cx="30" cy="140" r="8" fill="#409EFF"/>
+  
+  <!-- 工具箱文字 -->
+  <text x="210" y="105" font-family="Arial, 'Microsoft YaHei', sans-serif" font-size="40" font-weight="bold" fill="#409EFF">工具箱</text>
+</svg> 
