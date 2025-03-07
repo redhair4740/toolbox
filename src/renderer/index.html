@@ -1,13 +1,42 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
   <head>
     <meta charset="UTF-8" />
-    <title>Electron</title>
+    <title>YO工具箱</title>
     <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'"
     />
+    <meta name="theme-color" content="#409eff">
+    <script>
+      // 尝试从localStorage读取主题设置
+      (function() {
+        // 首次加载时禁用过渡，避免不必要的动画
+        document.documentElement.classList.add('no-transition');
+        
+        // 延迟移除no-transition类，确保页面加载后才可以过渡
+        setTimeout(() => {
+          document.documentElement.classList.remove('no-transition');
+        }, 300);
+        
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark') {
+          document.documentElement.classList.add('dark');
+          document.body.setAttribute('data-theme', 'dark');
+        } else if (savedTheme === 'light') {
+          document.documentElement.classList.remove('dark');
+          document.body.setAttribute('data-theme', 'light');
+        } else {
+          // 如果没有保存的设置，则检查系统偏好
+          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (prefersDark) {
+            document.documentElement.classList.add('dark');
+            document.body.setAttribute('data-theme', 'dark');
+          }
+        }
+      })();
+    </script>
   </head>
 
   <body>

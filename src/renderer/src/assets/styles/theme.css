@@ -1,0 +1,349 @@
+/* 主题变量定义 */
+
+/* 基础过渡动画 - 添加在:root层级确保全局生效 */
+:root {
+  /* 为所有元素添加颜色过渡 */
+  --transition-time: 0.3s;
+  --transition-time-fast: 0.2s;
+  --transition-time-slow: 0.8s;
+  --transition-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 明亮模式（默认） */
+:root {
+  /* Element Plus 原始变量 */
+  --el-color-primary: #409eff;
+  --el-text-color-primary: #303133;
+  --el-text-color-regular: #606266;
+  --el-text-color-secondary: #909399;
+  
+  /* 应用自定义变量 */
+  --app-background: #f5f7fa;
+  --app-text-color: #303133;
+  --app-border-color: #dcdfe6;
+  --app-card-background: #ffffff;
+  --app-sidebar-background: #ffffff;
+  --app-header-background: #ffffff;
+  --app-hover-color: #f2f6fc;
+  --app-active-background: #ecf5ff;
+  --app-shadow-color: rgba(0, 0, 0, 0.1);
+  --app-icon-color: #909399;
+  --app-image-filter: none;
+  
+  /* 系统变量 */
+  --sidebar-width: 200px;
+  --sidebar-collapsed-width: 64px;
+  --header-height: 60px;
+}
+
+/* 暗黑模式 */
+html.dark {
+  /* Element Plus 暗色变量 */
+  --el-color-primary: #409eff;
+  --el-text-color-primary: #E5EAF3;
+  --el-text-color-regular: #CFD3DC;
+  --el-text-color-secondary: #A3A6AD;
+  
+  /* 应用自定义变量 */
+  --app-background: #141414;
+  --app-text-color: #E5EAF3;
+  --app-border-color: #4c4d4f;
+  --app-card-background: #1d1e1f;
+  --app-sidebar-background: #1d1e1f;
+  --app-header-background: #1d1e1f;
+  --app-hover-color: #262727;
+  --app-active-background: #2d2d2f;
+  --app-shadow-color: rgba(0, 0, 0, 0.4);
+  --app-icon-color: #a0a0a0;
+  --app-image-filter: brightness(0.8) invert(0.2);
+}
+
+/* 添加过渡动画 */
+html,
+html * {
+  transition: 
+    background-color var(--transition-time) var(--transition-function),
+    color var(--transition-time) var(--transition-function),
+    border-color var(--transition-time) var(--transition-function),
+    box-shadow var(--transition-time) var(--transition-function),
+    opacity var(--transition-time) var(--transition-function);
+}
+
+/* 为容器元素添加更慢的过渡 */
+.app-container,
+.sidebar,
+.main-content,
+.content-header,
+.content-body,
+.welcome-section,
+.feature-card,
+.el-card {
+  transition: 
+    background-color var(--transition-time-slow) var(--transition-function),
+    color var(--transition-time) var(--transition-function),
+    border-color var(--transition-time) var(--transition-function),
+    box-shadow var(--transition-time-slow) var(--transition-function);
+}
+
+/* 为图片和SVG添加过渡效果 */
+img, svg {
+  transition: filter var(--transition-time-slow) var(--transition-function);
+}
+
+/* 某些需要快速反馈的元素使用较短的过渡时间 */
+.theme-switch,
+.nav-item,
+.el-button,
+.el-input,
+.el-checkbox,
+.el-radio {
+  transition: 
+    background-color var(--transition-time-fast) var(--transition-function),
+    color var(--transition-time-fast) var(--transition-function),
+    border-color var(--transition-time-fast) var(--transition-function),
+    box-shadow var(--transition-time-fast) var(--transition-function);
+}
+
+/* 某些不需要过渡的元素 */
+.no-transition,
+.no-transition * {
+  transition: none !important;
+}
+
+/* 基础样式 */
+body {
+  background-color: var(--app-background);
+  color: var(--app-text-color);
+  font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
+    Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+/* 侧边栏样式 */
+.sidebar {
+  background-color: var(--app-sidebar-background);
+  border-color: var(--app-border-color);
+}
+
+/* 内容头部样式 */
+.content-header {
+  background-color: var(--app-header-background);
+  border-color: var(--app-border-color);
+}
+
+/* 卡片样式 */
+.el-card {
+  background-color: var(--app-card-background) !important;
+  border-color: var(--app-border-color) !important;
+  color: var(--app-text-color) !important;
+}
+
+.el-card__header {
+  border-color: var(--app-border-color) !important;
+}
+
+.el-card.is-always-shadow,
+.el-card.is-hover-shadow:focus,
+.el-card.is-hover-shadow:hover {
+  box-shadow: 0 2px 12px 0 var(--app-shadow-color) !important;
+}
+
+/* 导航项样式 */
+.nav-item {
+  color: var(--app-text-color);
+}
+
+.nav-item:hover {
+  background-color: var(--app-hover-color);
+}
+
+.nav-item.active {
+  background-color: var(--app-active-background);
+}
+
+/* Element Plus组件覆盖样式 */
+html.dark .el-button {
+  --el-button-bg-color: #2d2d2f;
+  --el-button-border-color: #4c4d4f;
+  --el-button-hover-bg-color: #363637;
+  --el-button-hover-border-color: #5a5a5c;
+}
+
+html.dark .el-input__wrapper {
+  background-color: #1d1e1f;
+  box-shadow: 0 0 0 1px #4c4d4f inset;
+}
+
+html.dark .el-input__inner {
+  color: #E5EAF3;
+}
+
+html.dark .el-table {
+  --el-table-bg-color: #1d1e1f;
+  --el-table-border-color: #4c4d4f;
+  --el-table-text-color: #E5EAF3;
+  --el-table-header-bg-color: #2d2d2f;
+  --el-table-header-text-color: #E5EAF3;
+  --el-table-row-hover-bg-color: #262727;
+}
+
+html.dark .el-select__popper {
+  background-color: #1d1e1f;
+  border-color: #4c4d4f;
+}
+
+html.dark .el-select-dropdown__item {
+  color: #E5EAF3;
+}
+
+html.dark .el-select-dropdown__item.hover,
+html.dark .el-select-dropdown__item:hover {
+  background-color: #262727;
+}
+
+/* 主题切换按钮样式 */
+.theme-switch {
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.3s;
+}
+
+.theme-switch:hover {
+  background-color: var(--app-hover-color);
+}
+
+.theme-switch .el-icon {
+  font-size: 18px;
+  color: var(--app-icon-color);
+}
+
+/* 文本输入框暗黑模式样式 */
+html.dark .el-input-number__decrease,
+html.dark .el-input-number__increase {
+  background-color: #2d2d2f;
+  border-color: #4c4d4f;
+  color: #CFD3DC;
+}
+
+/* 标签暗黑模式样式 */
+html.dark .el-tag {
+  background-color: #2d2d2f;
+  border-color: #4c4d4f;
+  color: #E5EAF3;
+}
+
+/* 文件列表暗黑模式样式 */
+html.dark .file-list-table {
+  --el-table-border-color: #4c4d4f;
+  --el-table-header-bg-color: #2d2d2f;
+}
+
+html.dark .file-list-table th {
+  background-color: #2d2d2f;
+  color: #E5EAF3;
+}
+
+html.dark .file-list-table td {
+  border-bottom-color: #4c4d4f;
+}
+
+/* 分页组件暗黑模式样式 */
+html.dark .el-pagination {
+  --el-pagination-button-color: #CFD3DC;
+  --el-pagination-button-bg-color: #2d2d2f;
+  --el-pagination-button-disabled-color: #A3A6AD;
+  --el-pagination-button-disabled-bg-color: #1a1a1a;
+  --el-pagination-hover-color: var(--el-color-primary);
+}
+
+/* 徽章暗黑模式样式 */
+html.dark .el-badge__content {
+  border: 1px solid #1d1e1f;
+}
+
+/* 弹窗暗黑模式覆盖样式 */
+html.dark .el-dialog {
+  background-color: #1d1e1f;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+html.dark .el-dialog__header,
+html.dark .el-dialog__title {
+  color: #E5EAF3;
+}
+
+html.dark .el-dialog__body {
+  color: #CFD3DC;
+}
+
+html.dark .el-dialog__footer {
+  border-top-color: #4c4d4f;
+}
+
+/* 下拉菜单暗黑模式样式 */
+html.dark .el-dropdown-menu {
+  background-color: #1d1e1f;
+  border-color: #4c4d4f;
+}
+
+html.dark .el-dropdown-menu__item {
+  color: #E5EAF3;
+}
+
+html.dark .el-dropdown-menu__item:focus,
+html.dark .el-dropdown-menu__item:not(.is-disabled):hover {
+  background-color: #262727;
+}
+
+/* 下拉菜单暗黑模式样式 */
+html.dark .el-select-dropdown {
+  background-color: #1d1e1f !important;
+  border-color: #4c4d4f !important;
+}
+
+html.dark .el-select-dropdown__item {
+  color: #E5EAF3 !important;
+}
+
+html.dark .el-select-dropdown__item.selected {
+  color: var(--el-color-primary) !important;
+}
+
+/* 主题切换方向特定的过渡效果 */
+html[data-theme-direction="to-dark"] {
+  --transition-timing-color: cubic-bezier(0.4, 0.01, 0.165, 0.99);
+  --transition-timing-background: cubic-bezier(0.3, 0.01, 0.25, 1);
+}
+
+html[data-theme-direction="to-light"] {
+  --transition-timing-color: cubic-bezier(0.5, 0, 0.3, 1);
+  --transition-timing-background: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 主题过渡中的特殊样式 */
+.theme-transition {
+  --transition-time-active: 0.85s;
+}
+
+.theme-transition * {
+  transition-duration: var(--transition-time-active) !important;
+}
+
+.theme-transition .app-container,
+.theme-transition .sidebar,
+.theme-transition .main-content,
+.theme-transition .content-header,
+.theme-transition .content-body,
+.theme-transition .welcome-section,
+.theme-transition .feature-card,
+.theme-transition .el-card {
+  transition: 
+    background-color var(--transition-time-active) var(--transition-timing-background),
+    color calc(var(--transition-time-active) * 0.6) var(--transition-timing-color),
+    border-color var(--transition-time-active) var(--transition-timing-background);
+} 
