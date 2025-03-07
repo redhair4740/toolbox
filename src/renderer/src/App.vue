@@ -62,7 +62,7 @@ const isSidebarCollapsed = ref(false)
 const getPageTitle = () => {
   switch (activeTab.value) {
     case 'home':
-      return '欢迎使用YO工具箱'
+      return '欢迎使用YO的工具箱'
     case 'move':
       return '文件移动'
     case 'rename':
