@@ -7,7 +7,9 @@ const api = {
   searchFiles: (path: string, extensions: string[]) =>
     ipcRenderer.invoke('search-files', { path, extensions }),
   cutFile: (source: string, destination: string, fileName: string) =>
-    ipcRenderer.invoke('cut-file', { source, destination, fileName })
+    ipcRenderer.invoke('cut-file', { source, destination, fileName }),
+  renameFile: (filePath: string, searchText: string, replaceText: string) =>
+    ipcRenderer.invoke('rename-file', { filePath, searchText, replaceText })
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

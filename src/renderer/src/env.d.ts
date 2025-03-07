@@ -6,3 +6,24 @@ declare module '*.vue' {
   const component: DefineComponent<{}, {}, any>
   export default component
 }
+
+// 定义 window.api 接口
+interface Window {
+  api: {
+    openDirectoryDialog: () => Promise<string | null>
+    searchFiles: (
+      path: string,
+      extensions: string[]
+    ) => Promise<import('../../types/file-types').FileWithFullPath[]>
+    cutFile: (source: string, destination: string, fileName: string) => Promise<string>
+    renameFile: (
+      filePath: string,
+      searchText: string,
+      replaceText: string
+    ) => Promise<{
+      success: boolean
+      message: string
+      newPath?: string
+    }>
+  }
+}

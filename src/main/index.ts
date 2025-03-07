@@ -146,7 +146,7 @@ async function cutFileToDirectory(
   fileName: string
 ): Promise<string> {
   // eslint-disable-next-line no-useless-catch
-  let targetPath;
+  let targetPath
   // eslint-disable-next-line no-useless-catch
   try {
     // 确保目标路径是完整的
@@ -199,4 +199,55 @@ async function cutFileToDirectory(
   }
 
   return targetPath
+}
+
+// 在ipcMain中监听重命名文件事件
+ipcMain.handle('rename-file', async (_event, { filePath, searchText, replaceText }) => {
+  try {
+    return await renameFile(filePath, searchText, replaceText)
+  } catch (error) {
+    const err = error as Error
+    return { success: false, message: err.message }
+  }
+})
+
+// 定义重命名文件的函数
+async function renameFile(
+  filePath: string,
+  searchText: string,
+  replaceText: string
+): Promise<{ success: boolean; message: string; newPath?: string }> {
+  try {
+    // 获取文件的目录和文件名
+    const dir = path.dirname(filePath)
+    const fileName = path.basename(filePath)
+
+    // 替换文件名中的文本
+    const newFileName = fileName.replace(new RegExp(searchText, 'g'), replaceText)
+
+    // 如果文件名没有变化，不需要重命名
+    if (newFileName === fileName) {
+      return { success: false, message: '文件名未发生变化' }
+    }
+
+    // 构建新的文件路径
+    const newFilePath = path.join(dir, newFileName)
+
+    // 检查新文件名是否已存在
+    if (fs.existsSync(newFilePath)) {
+      return { success: false, message: `文件已存在: ${newFilePath}` }
+    }
+
+    // 重命名文件
+    await fs.promises.rename(filePath, newFilePath)
+
+    return {
+      success: true,
+      message: '文件重命名成功',
+      newPath: newFilePath
+    }
+  } catch (error) {
+    const err = error as Error
+    return { success: false, message: err.message }
+  }
 }
