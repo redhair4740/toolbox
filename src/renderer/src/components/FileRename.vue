@@ -80,7 +80,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { FileWithFullPath } from '../../types/file-types.d'
+import { FileWithFullPath } from '../../../types/file-types'
 import PathSelectorDialog from './common/PathSelectorDialog.vue'
 import { useFileTypes } from '../composables/useFileTypes'
 
