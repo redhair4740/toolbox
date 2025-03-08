@@ -62,11 +62,10 @@ import { FolderOpened, Edit } from '@element-plus/icons-vue'
   display: flex;
   align-items: center;
   margin-bottom: 40px;
-  background-color: var(--app-card-background);
+  background-color: white;
   border-radius: 8px;
-  box-shadow: 0 2px 12px var(--app-shadow-color);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
   padding: 40px;
-  border: 1px solid var(--app-border-color);
 }
 
 .welcome-text {
@@ -77,12 +76,12 @@ import { FolderOpened, Edit } from '@element-plus/icons-vue'
   font-size: 32px;
   font-weight: 600;
   margin-bottom: 16px;
-  color: var(--app-text-color);
+  color: var(--text-color);
 }
 
 .welcome-text p {
   font-size: 16px;
-  color: var(--app-icon-color);
+  color: var(--text-light);
 }
 
 .welcome-image {
@@ -96,8 +95,6 @@ import { FolderOpened, Edit } from '@element-plus/icons-vue'
   max-width: 100%;
   height: auto;
   max-height: 250px;
-  /* 在暗黑模式下可以调整明度 */
-  filter: var(--app-image-filter, none);
 }
 
 .features-section {
@@ -108,7 +105,7 @@ import { FolderOpened, Edit } from '@element-plus/icons-vue'
   font-size: 20px;
   font-weight: 500;
   margin-bottom: 20px;
-  color: var(--app-text-color);
+  color: var(--text-color);
 }
 
 .features-grid {
@@ -119,24 +116,23 @@ import { FolderOpened, Edit } from '@element-plus/icons-vue'
 
 .feature-card {
   display: flex;
-  background-color: var(--app-card-background);
+  background-color: white;
   border-radius: 8px;
-  box-shadow: 0 2px 12px var(--app-shadow-color);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
   padding: 24px;
   transition: all 0.3s ease;
   cursor: pointer;
-  border: 1px solid var(--app-border-color);
 }
 
 .feature-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 5px 15px var(--app-shadow-color);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
 }
 
 .card-icon {
   margin-right: 20px;
   font-size: 40px;
-  color: var(--el-color-primary);
+  color: var(--primary-color);
   display: flex;
   align-items: flex-start;
 }
@@ -153,12 +149,12 @@ import { FolderOpened, Edit } from '@element-plus/icons-vue'
   font-size: 18px;
   font-weight: 500;
   margin-bottom: 8px;
-  color: var(--app-text-color);
+  color: var(--text-color);
 }
 
 .card-content p {
   font-size: 14px;
-  color: var(--app-icon-color);
+  color: var(--text-light);
   margin-bottom: 16px;
 }
 
@@ -169,7 +165,7 @@ import { FolderOpened, Edit } from '@element-plus/icons-vue'
 
 .card-content li {
   font-size: 14px;
-  color: var(--app-icon-color);
+  color: var(--text-light);
   margin-bottom: 4px;
   position: relative;
   padding-left: 16px;
@@ -177,7 +173,7 @@ import { FolderOpened, Edit } from '@element-plus/icons-vue'
 
 .card-content li:before {
   content: '•';
-  color: var(--el-color-primary);
+  color: var(--primary-color);
   position: absolute;
   left: 0;
 }

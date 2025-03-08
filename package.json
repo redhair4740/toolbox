@@ -23,7 +23,6 @@
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.0",
     "@electron-toolkit/utils": "^3.0.0",
-    "@vueuse/core": "^12.8.2",
     "electron-updater": "^6.1.7",
     "element-plus": "^2.8.7"
   },
