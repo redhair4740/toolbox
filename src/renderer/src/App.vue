@@ -80,9 +80,9 @@ const toggleSidebar = () => {
 <style>
 :root {
   --primary-color: #409eff;
-  --sidebar-width: 200px;
-  --sidebar-collapsed-width: 64px;
-  --header-height: 60px;
+  --sidebar-width: 180px;
+  --sidebar-collapsed-width: 56px;
+  --header-height: 50px;
   --bg-color: #f5f7fa;
   --text-color: #303133;
   --text-light: #909399;
@@ -147,14 +147,14 @@ body {
 
 .nav-items {
   flex: 1;
-  padding: 16px 0;
+  padding: 10px 0;
   overflow-y: auto;
 }
 
 .nav-item {
   display: flex;
   align-items: center;
-  padding: 12px 16px;
+  padding: 10px 14px;
   cursor: pointer;
   transition: all 0.2s ease;
   color: var(--text-light);
@@ -199,27 +199,20 @@ body {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: all 0.3s ease;
 }
 
 .content-header {
   height: var(--header-height);
-  padding: 0 24px;
   display: flex;
   align-items: center;
+  padding: 0 15px;
   border-bottom: 1px solid var(--border-color);
   background-color: white;
-}
-
-.content-header h1 {
-  font-size: 20px;
-  font-weight: 500;
-  color: var(--text-color);
 }
 
 .content-body {
   flex: 1;
   overflow: auto;
-  padding: 20px;
+  padding: 15px;
 }
 </style>

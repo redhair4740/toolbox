@@ -54,6 +54,19 @@
             </el-input>
           </div>
 
+          <div class="search-options">
+            <el-checkbox v-model="ignoreCase" label="忽略大小写匹配" />
+          </div>
+
+          <div class="search-replace-group">
+            <div class="input-label">大小写转换</div>
+            <el-select v-model="caseConversion" placeholder="选择大小写转换方式" style="width: 100%">
+              <el-option label="不转换" value="none" />
+              <el-option label="转大写" value="uppercase" />
+              <el-option label="转小写" value="lowercase" />
+            </el-select>
+          </div>
+
           <div class="filter-controls">
             <div class="input-label">文件类型过滤</div>
             <el-select
@@ -83,7 +96,7 @@
           <el-button
             type="success"
             @click="renameSelectedFiles"
-            :disabled="!searchText || selectedFiles.length === 0"
+            :disabled="(!searchText.value && caseConversion === 'none') || selectedFiles.length === 0"
           >
             <el-icon><Edit /></el-icon>
             <span>批量重命名</span>
@@ -133,7 +146,7 @@
                 type="primary"
                 size="small"
                 @click="renameFile(scope.row)"
-                :disabled="!searchText"
+                :disabled="!searchText && caseConversion === 'none'"
                 >重命名</el-button
               >
             </template>
@@ -166,6 +179,8 @@ const dialogVisible = ref(false)
 const dialogPath = ref('')
 const tableData = ref<FileWithFullPath[]>([])
 const selectedFiles = ref<FileWithFullPath[]>([])
+const ignoreCase = ref(false)
+const caseConversion = ref('none')
 
 const { fileExtensions, fileTypeOptions } = useFileTypes()
 
@@ -207,22 +222,48 @@ const searchFiles = async () => {
 
 // 获取预览文件名
 const getPreviewName = (fileName: string) => {
-  if (!searchText.value) return fileName
-  return fileName.replace(new RegExp(searchText.value, 'g'), replaceText.value || '')
+  let newName = fileName
+  
+  // 如果有搜索文本，先进行替换
+  if (searchText.value) {
+    // 创建正则表达式，根据是否忽略大小写设置标志
+    const flags = ignoreCase.value ? 'gi' : 'g'
+    const regex = new RegExp(searchText.value, flags)
+    
+    // 替换文本
+    newName = fileName.replace(regex, replaceText.value || '')
+  }
+  
+  // 根据大小写转换选项处理文件名，但保留文件扩展名
+  if (caseConversion.value !== 'none') {
+    const ext = newName.lastIndexOf('.') > 0 ? newName.substring(newName.lastIndexOf('.')) : ''
+    const nameWithoutExt = ext ? newName.substring(0, newName.lastIndexOf('.')) : newName
+    
+    if (caseConversion.value === 'uppercase') {
+      newName = nameWithoutExt.toUpperCase() + ext
+    } else if (caseConversion.value === 'lowercase') {
+      newName = nameWithoutExt.toLowerCase() + ext
+    }
+  }
+  
+  return newName
 }
 
 // 单个文件重命名
 const renameFile = async (file: FileWithFullPath) => {
   try {
-    if (!searchText.value) {
-      ElMessage.warning('请输入搜索文本')
+    // 如果没有搜索文本但选择了大小写转换，允许继续
+    if (!searchText.value && caseConversion.value === 'none') {
+      ElMessage.warning('请输入搜索文本或选择大小写转换')
       return
     }
 
     const result = await window.api.renameFile(
       file.fullPath,
       searchText.value,
-      replaceText.value || ''
+      replaceText.value || '',
+      ignoreCase.value,
+      caseConversion.value
     )
 
     if (result.success) {
@@ -240,12 +281,6 @@ const renameFile = async (file: FileWithFullPath) => {
     ElMessage.error(`重命名文件时出错: ${err.message}`)
   }
 }
-
-// 表格选择项更改处理
-const handleSelectionChange = (selection: FileWithFullPath[]) => {
-  selectedFiles.value = selection
-}
-
 // 批量重命名选中文件
 const renameSelectedFiles = async () => {
   if (selectedFiles.value.length === 0) {
@@ -253,8 +288,9 @@ const renameSelectedFiles = async () => {
     return
   }
 
-  if (!searchText.value) {
-    ElMessage.warning('请输入搜索文本')
+  // 如果没有搜索文本但选择了大小写转换，允许继续
+  if (!searchText.value && caseConversion.value === 'none') {
+    ElMessage.warning('请输入搜索文本或选择大小写转换')
     return
   }
 
@@ -268,15 +304,12 @@ const renameSelectedFiles = async () => {
       const result = await window.api.renameFile(
         file.fullPath,
         searchText.value,
-        replaceText.value || ''
+        replaceText.value || '',
+        ignoreCase.value,
+        caseConversion.value
       )
       if (result.success) {
         successCount++
-        // 从表格中移除成功重命名的文件
-        const index = tableData.value.findIndex((item) => item.fullPath === file.fullPath)
-        if (index !== -1) {
-          tableData.value.splice(index, 1)
-        }
       } else {
         errorCount++
         console.error(`重命名失败: ${file.fileName} - ${result.message}`)
@@ -289,6 +322,8 @@ const renameSelectedFiles = async () => {
 
   if (successCount > 0) {
     ElMessage.success(`成功重命名 ${successCount} 个文件`)
+    // 重新搜索文件以更新列表
+    searchFiles()
   }
 
   if (errorCount > 0) {
@@ -296,10 +331,20 @@ const renameSelectedFiles = async () => {
   }
 }
 
+// 表格选择项更改处理
+const handleSelectionChange = (selection: FileWithFullPath[]) => {
+  selectedFiles.value = selection
+}
+
 // 确认目录选择
 const confirmDirectory = () => {
   sourcePath.value = dialogPath.value
   dialogVisible.value = false
+  
+  // 当选择源路径后自动触发查询
+  if (sourcePath.value && fileExtensions.value.length > 0) {
+    searchFiles()
+  }
 }
 </script>
 
@@ -307,14 +352,14 @@ const confirmDirectory = () => {
 .file-rename-container {
   height: 100%;
   display: grid;
-  grid-template-columns: 300px 1fr;
-  gap: 20px;
+  grid-template-columns: 280px 1fr;
+  gap: 15px;
 }
 
 .action-panel {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
 }
 
 .panel-card,
@@ -338,41 +383,41 @@ const confirmDirectory = () => {
 
 .header-actions {
   display: flex;
-  gap: 8px;
+  gap: 6px;
 }
 
 .path-inputs,
 .rename-settings {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .path-group,
 .search-replace-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .path-label,
 .input-label {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   color: var(--text-light);
   font-size: 14px;
 }
 
 .filter-controls {
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .action-buttons {
-  margin-top: 16px;
+  margin-top: 12px;
   display: flex;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
 }
 
 .action-buttons .el-button {
@@ -384,7 +429,7 @@ const confirmDirectory = () => {
 }
 
 .file-table {
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 :deep(.el-card__body) {
@@ -392,6 +437,7 @@ const confirmDirectory = () => {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  padding: 12px;
 }
 
 :deep(.el-table__body-wrapper) {

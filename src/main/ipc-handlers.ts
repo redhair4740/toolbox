@@ -64,21 +64,48 @@ async function cutFileToDirectory(
 async function renameFile(
   filePath: string,
   searchText: string,
-  replaceText: string
+  replaceText: string,
+  ignoreCase: boolean = false,
+  caseConversion: string = 'none'
 ): Promise<{ success: boolean; message: string; newPath?: string }> {
   try {
     const dir = path.dirname(filePath)
     const fileName = path.basename(filePath)
     
-    if (!searchText) {
-      return { success: false, message: '搜索文本不能为空' }
+    let newFileName = fileName
+    
+    // 如果有搜索文本，先进行替换
+    if (searchText) {
+      // 创建正则表达式，根据是否忽略大小写设置标志
+      const flags = ignoreCase ? 'gi' : 'g'
+      const regex = new RegExp(searchText, flags)
+      
+      // 检查文件名是否包含搜索文本（考虑大小写设置）
+      if (!regex.test(fileName)) {
+        return { success: false, message: '文件名中不包含搜索文本' }
+      }
+      
+      // 替换文本
+      newFileName = fileName.replace(regex, replaceText)
     }
     
-    if (!fileName.includes(searchText)) {
-      return { success: false, message: '文件名中不包含搜索文本' }
+    // 根据大小写转换选项处理文件名，但保留文件扩展名
+    if (caseConversion !== 'none') {
+      const ext = path.extname(newFileName)
+      const nameWithoutExt = path.basename(newFileName, ext)
+      
+      if (caseConversion === 'uppercase') {
+        newFileName = nameWithoutExt.toUpperCase() + ext
+      } else if (caseConversion === 'lowercase') {
+        newFileName = nameWithoutExt.toLowerCase() + ext
+      }
     }
     
-    const newFileName = fileName.replace(new RegExp(searchText, 'g'), replaceText)
+    // 如果没有变化，返回成功状态但不执行重命名
+    if (newFileName === fileName) {
+      return { success: true, message: '文件名没有变化，无需重命名' }
+    }
+    
     const newPath = path.join(dir, newFileName)
     
     await fs.promises.rename(filePath, newPath)
@@ -134,10 +161,10 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   })
   
   // 重命名文件
-  ipcMain.handle('rename-file', async (_, { filePath, searchText, replaceText }) => {
-    return await renameFile(filePath, searchText, replaceText)
+  ipcMain.handle('rename-file', async (_, { filePath, searchText, replaceText, ignoreCase, caseConversion }) => {
+    return await renameFile(filePath, searchText, replaceText, ignoreCase, caseConversion)
   })
   
   // 简单的ping测试
   ipcMain.on('ping', () => console.log('pong'))
-} 
+}

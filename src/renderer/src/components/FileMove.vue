@@ -218,6 +218,10 @@ const moveFiles = async () => {
 const confirmDirectory = () => {
   if (currentPathType.value === 'source') {
     sourcePath.value = dialogPath.value
+    // 当选择源路径后自动触发查询
+    if (sourcePath.value && fileExtensions.value.length > 0) {
+      searchFiles()
+    }
   } else {
     targetPath.value = dialogPath.value
   }
@@ -229,14 +233,14 @@ const confirmDirectory = () => {
 .file-move-container {
   height: 100%;
   display: grid;
-  grid-template-columns: 300px 1fr;
-  gap: 20px;
+  grid-template-columns: 280px 1fr;
+  gap: 15px;
 }
 
 .action-panel {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
 }
 
 .panel-card,
@@ -261,31 +265,31 @@ const confirmDirectory = () => {
 .path-inputs {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .path-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .path-label {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   color: var(--text-light);
   font-size: 14px;
 }
 
 .filter-controls {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .action-buttons {
   display: flex;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
 }
 
 .action-buttons .el-button {
@@ -297,7 +301,7 @@ const confirmDirectory = () => {
 }
 
 .file-table {
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 :deep(.el-card__body) {
@@ -305,6 +309,7 @@ const confirmDirectory = () => {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  padding: 12px;
 }
 
 :deep(.el-table__body-wrapper) {
