@@ -1,0 +1,122 @@
+/* 主题变量定义 */
+
+/* 亮色主题（默认） */
+:root {
+  --primary-color: #409eff;
+  --sidebar-width: 180px;
+  --sidebar-collapsed-width: 56px;
+  --header-height: 50px;
+  --bg-color: #f5f7fa;
+  --bg-color-secondary: #ffffff;
+  --text-color: #303133;
+  --text-light: #909399;
+  --border-color: #e4e7ed;
+  --shadow-color: rgba(0, 0, 0, 0.05);
+  --hover-color: rgba(64, 158, 255, 0.1);
+  --active-color: rgba(64, 158, 255, 0.15);
+  --card-bg: #ffffff;
+  --tag-bg: #f5f7fa;
+  --success-color: #67c23a;
+  --warning-color: #e6a23c;
+  --danger-color: #f56c6c;
+  --info-color: #909399;
+}
+
+/* 深色主题 */
+[data-theme='dark'] {
+  --primary-color: #409eff;
+  --sidebar-width: 180px;
+  --sidebar-collapsed-width: 56px;
+  --header-height: 50px;
+  --bg-color: #1e1e1e;
+  --bg-color-secondary: #252525;
+  --text-color: #e0e0e0;
+  --text-light: #a0a0a0;
+  --border-color: #3e3e3e;
+  --shadow-color: rgba(0, 0, 0, 0.2);
+  --hover-color: rgba(64, 158, 255, 0.15);
+  --active-color: rgba(64, 158, 255, 0.25);
+  --card-bg: #252525;
+  --tag-bg: #333333;
+  --success-color: #67c23a;
+  --warning-color: #e6a23c;
+  --danger-color: #f56c6c;
+  --info-color: #909399;
+}
+
+/* 主题过渡效果 */
+body {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* 确保深色模式下的全局背景色 */
+[data-theme='dark'] body,
+[data-theme='dark'] .app-container,
+[data-theme='dark'] .content-body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+}
+
+/* 确保深色模式下的侧边栏和顶部栏 */
+[data-theme='dark'] .sidebar,
+[data-theme='dark'] .nav-items,
+[data-theme='dark'] .nav-item,
+[data-theme='dark'] .sidebar-toggle,
+[data-theme='dark'] .logo,
+[data-theme='dark'] .content-header {
+  background-color: var(--bg-color-secondary);
+  color: var(--text-color);
+  border-color: var(--border-color);
+}
+
+/* 确保深色模式下的卡片背景色 */
+[data-theme='dark'] .el-card {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+  color: var(--text-color);
+}
+
+/* 确保深色模式下的表格背景色 */
+[data-theme='dark'] .el-table {
+  background-color: var(--card-bg);
+}
+
+/* 确保深色模式下的弹窗背景色 */
+[data-theme='dark'] .el-dialog,
+[data-theme='dark'] .el-message-box {
+  background-color: var(--card-bg);
+}
+
+/* 确保深色模式下的下拉菜单背景色 */
+[data-theme='dark'] .el-dropdown-menu {
+  background-color: var(--card-bg);
+}
+
+/* 确保深色模式下的输入框背景色 */
+[data-theme='dark'] .el-input__inner {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+}
+
+/* 确保深色模式下的标签页背景色 */
+[data-theme='dark'] .el-tabs__content {
+  background-color: var(--card-bg);
+}
+
+/* 确保深色模式下的空状态背景色 */
+[data-theme='dark'] .el-empty {
+  background-color: transparent;
+}
+
+/* 确保深色模式下的分页器背景色 */
+[data-theme='dark'] .el-pagination {
+  background-color: var(--bg-color-secondary);
+  color: var(--text-color);
+}
+
+/* 关于页面技术栈样式 */
+[data-theme='dark'] .app-credits li {
+  background-color: var(--bg-color-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+} 

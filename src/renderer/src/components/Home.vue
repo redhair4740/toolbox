@@ -62,9 +62,9 @@ import { FolderOpened, Edit } from '@element-plus/icons-vue'
   display: flex;
   align-items: center;
   margin-bottom: 40px;
-  background-color: white;
+  background-color: var(--bg-color-secondary);
   border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2px 12px var(--shadow-color);
   padding: 40px;
 }
 
@@ -116,9 +116,9 @@ import { FolderOpened, Edit } from '@element-plus/icons-vue'
 
 .feature-card {
   display: flex;
-  background-color: white;
+  background-color: var(--bg-color-secondary);
   border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2px 12px var(--shadow-color);
   padding: 24px;
   transition: all 0.3s ease;
   cursor: pointer;
@@ -126,7 +126,7 @@ import { FolderOpened, Edit } from '@element-plus/icons-vue'
 
 .feature-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 5px 15px var(--shadow-color);
 }
 
 .card-icon {

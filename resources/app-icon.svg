@@ -1,0 +1,47 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 定义渐变 -->
+  <defs>
+    <linearGradient id="primaryGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1890FF" />
+      <stop offset="100%" stop-color="#409EFF" />
+    </linearGradient>
+    <linearGradient id="secondaryGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#409EFF" />
+      <stop offset="100%" stop-color="#1890FF" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="10" flood-opacity="0.3" />
+    </filter>
+  </defs>
+
+  <!-- 背景 -->
+  <rect x="56" y="56" width="400" height="400" rx="80" fill="#252525" filter="url(#shadow)" />
+  
+  <!-- 工具箱主体 -->
+  <rect x="96" y="136" width="320" height="240" rx="24" fill="url(#primaryGradient)" />
+  
+  <!-- 工具箱顶部 -->
+  <path d="M96 160C96 146.745 106.745 136 120 136H376C389.255 136 400 146.745 400 160V184H96V160Z" fill="url(#secondaryGradient)" />
+  
+  <!-- 工具箱把手 -->
+  <rect x="216" y="104" width="80" height="32" rx="16" fill="url(#secondaryGradient)" />
+  
+  <!-- 工具箱锁扣 -->
+  <rect x="236" y="184" width="40" height="16" rx="8" fill="#252525" />
+  
+  <!-- 工具图标 - 扳手 -->
+  <path d="M160 240L200 280L184 296L144 256L160 240Z" fill="white" />
+  <circle cx="172" cy="252" r="8" fill="#252525" />
+  
+  <!-- 工具图标 - 螺丝刀 -->
+  <rect x="240" y="240" width="12" height="60" rx="6" transform="rotate(30 240 240)" fill="white" />
+  <path d="M246 240L258 252L252 258L240 246L246 240Z" fill="white" />
+  
+  <!-- 工具图标 - 锤子 -->
+  <rect x="320" y="240" width="16" height="60" rx="8" fill="white" />
+  <path d="M296 240H344V256H296V240Z" fill="white" />
+  
+  <!-- YO文字 -->
+  <path d="M176 320L208 352L240 320" stroke="white" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" />
+  <circle cx="304" cy="336" r="24" stroke="white" stroke-width="16" />
+</svg> 

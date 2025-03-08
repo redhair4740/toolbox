@@ -1,15 +1,94 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 
+// 进度事件监听器类型
+type ProgressListener = (progress: { current: number; total: number; file: string }) => void
+
+// 存储事件监听器
+const listeners = {
+  searchProgress: new Set<ProgressListener>(),
+  contentSearchProgress: new Set<ProgressListener>(),
+  moveProgress: new Set<ProgressListener>(),
+  renameProgress: new Set<ProgressListener>()
+}
+
+// 设置IPC事件监听
+ipcRenderer.on('search-progress', (_, data) => {
+  listeners.searchProgress.forEach(listener => listener(data))
+})
+
+ipcRenderer.on('content-search-progress', (_, data) => {
+  listeners.contentSearchProgress.forEach(listener => listener(data))
+})
+
+ipcRenderer.on('move-progress', (_, data) => {
+  listeners.moveProgress.forEach(listener => listener(data))
+})
+
+ipcRenderer.on('rename-progress', (_, data) => {
+  listeners.renameProgress.forEach(listener => listener(data))
+})
+
 // Custom APIs for renderer
 const api = {
+  // 目录对话框
   openDirectoryDialog: () => ipcRenderer.invoke('open-directory-dialog'),
+  
+  // 文件搜索
   searchFiles: (path: string, extensions: string[]) =>
     ipcRenderer.invoke('search-files', { path, extensions }),
+  onSearchProgress: (callback: ProgressListener) => {
+    listeners.searchProgress.add(callback)
+    return () => listeners.searchProgress.delete(callback)
+  },
+  
+  // 文件内容搜索
+  searchInFiles: (files: string[], searchText: string, ignoreCase: boolean = false) =>
+    ipcRenderer.invoke('search-in-files', { files, searchText, ignoreCase }),
+  onContentSearchProgress: (callback: ProgressListener) => {
+    listeners.contentSearchProgress.add(callback)
+    return () => listeners.contentSearchProgress.delete(callback)
+  },
+  
+  // 文件移动
   cutFile: (source: string, destination: string, fileName: string) =>
     ipcRenderer.invoke('cut-file', { source, destination, fileName }),
-  renameFile: (filePath: string, searchText: string, replaceText: string, options: { ignoreCase?: boolean, caseConversion?: string } = { ignoreCase: false, caseConversion: 'none' }) =>
-    ipcRenderer.invoke('rename-file', { filePath, searchText, replaceText, ignoreCase: options.ignoreCase, caseConversion: options.caseConversion })
+  batchMoveFiles: (files: { source: string; fileName: string }[], destination: string) =>
+    ipcRenderer.invoke('batch-move-files', { files, destination }),
+  onMoveProgress: (callback: ProgressListener) => {
+    listeners.moveProgress.add(callback)
+    return () => listeners.moveProgress.delete(callback)
+  },
+  
+  // 文件重命名
+  renameFile: (
+    filePath: string, 
+    searchText: string, 
+    replaceText: string, 
+    options: { ignoreCase?: boolean, caseConversion?: string } = { ignoreCase: false, caseConversion: 'none' }
+  ) => ipcRenderer.invoke('rename-file', { 
+    filePath, 
+    searchText, 
+    replaceText, 
+    ignoreCase: options.ignoreCase, 
+    caseConversion: options.caseConversion 
+  }),
+  batchRenameFiles: (
+    files: string[], 
+    searchText: string, 
+    replaceText: string, 
+    options: { ignoreCase?: boolean, caseConversion?: string } = { ignoreCase: false, caseConversion: 'none' }
+  ) => ipcRenderer.invoke('batch-rename-files', { 
+    files, 
+    searchText, 
+    replaceText, 
+    ignoreCase: options.ignoreCase, 
+    caseConversion: options.caseConversion 
+  }),
+  onRenameProgress: (callback: ProgressListener) => {
+    listeners.renameProgress.add(callback)
+    return () => listeners.renameProgress.delete(callback)
+  }
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to
