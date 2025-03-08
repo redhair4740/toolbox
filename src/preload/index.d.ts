@@ -11,7 +11,7 @@ declare global {
         targetPath: string
       }>>
       cutFile: (source: string, destination: string, fileName: string) => Promise<string>
-      renameFile: (filePath: string, searchText: string, replaceText: string, ignoreCase?: boolean, caseConversion?: string) => Promise<{
+      renameFile: (filePath: string, searchText: string, replaceText: string, options?: { ignoreCase?: boolean, caseConversion?: string }) => Promise<{
         success: boolean
         message: string
         newPath?: string

@@ -65,12 +65,13 @@ async function renameFile(
   filePath: string,
   searchText: string,
   replaceText: string,
-  ignoreCase: boolean = false,
-  caseConversion: string = 'none'
+  options: { ignoreCase?: boolean, caseConversion?: string } = { ignoreCase: false, caseConversion: 'none' }
 ): Promise<{ success: boolean; message: string; newPath?: string }> {
   try {
     const dir = path.dirname(filePath)
     const fileName = path.basename(filePath)
+    const ignoreCase = options.ignoreCase || false
+    const caseConversion = options.caseConversion || 'none'
     
     let newFileName = fileName
     
@@ -162,7 +163,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   
   // 重命名文件
   ipcMain.handle('rename-file', async (_, { filePath, searchText, replaceText, ignoreCase, caseConversion }) => {
-    return await renameFile(filePath, searchText, replaceText, ignoreCase, caseConversion)
+    return await renameFile(filePath, searchText, replaceText, { ignoreCase, caseConversion })
   })
   
   // 简单的ping测试

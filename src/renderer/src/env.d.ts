@@ -19,7 +19,8 @@ interface Window {
     renameFile: (
       filePath: string,
       searchText: string,
-      replaceText: string
+      replaceText: string,
+      options?: { ignoreCase?: boolean, caseConversion?: string }
     ) => Promise<{
       success: boolean
       message: string

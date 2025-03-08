@@ -8,8 +8,8 @@ const api = {
     ipcRenderer.invoke('search-files', { path, extensions }),
   cutFile: (source: string, destination: string, fileName: string) =>
     ipcRenderer.invoke('cut-file', { source, destination, fileName }),
-  renameFile: (filePath: string, searchText: string, replaceText: string, ignoreCase: boolean = false, caseConversion: string = 'none') =>
-    ipcRenderer.invoke('rename-file', { filePath, searchText, replaceText, ignoreCase, caseConversion })
+  renameFile: (filePath: string, searchText: string, replaceText: string, options: { ignoreCase?: boolean, caseConversion?: string } = { ignoreCase: false, caseConversion: 'none' }) =>
+    ipcRenderer.invoke('rename-file', { filePath, searchText, replaceText, ignoreCase: options.ignoreCase, caseConversion: options.caseConversion })
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

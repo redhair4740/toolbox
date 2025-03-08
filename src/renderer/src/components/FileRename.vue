@@ -96,7 +96,7 @@
           <el-button
             type="success"
             @click="renameSelectedFiles"
-            :disabled="(!searchText.value && caseConversion === 'none') || selectedFiles.length === 0"
+            :disabled="(!searchText && caseConversion === 'none') || selectedFiles.length === 0"
           >
             <el-icon><Edit /></el-icon>
             <span>批量重命名</span>
@@ -257,13 +257,11 @@ const renameFile = async (file: FileWithFullPath) => {
       ElMessage.warning('请输入搜索文本或选择大小写转换')
       return
     }
-
     const result = await window.api.renameFile(
       file.fullPath,
       searchText.value,
       replaceText.value || '',
-      ignoreCase.value,
-      caseConversion.value
+      { ignoreCase: ignoreCase.value, caseConversion: caseConversion.value }
     )
 
     if (result.success) {
@@ -305,8 +303,7 @@ const renameSelectedFiles = async () => {
         file.fullPath,
         searchText.value,
         replaceText.value || '',
-        ignoreCase.value,
-        caseConversion.value
+        { ignoreCase: ignoreCase.value, caseConversion: caseConversion.value }
       )
       if (result.success) {
         successCount++
