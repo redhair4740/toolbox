@@ -1,10 +1,10 @@
 {
   "name": "yo_toolbox",
   "version": "1.0.2",
-  "description": "An Electron application with Vue and TypeScript",
+  "description": "简单高效的文件管理解决方案",
   "main": "./out/main/index.js",
-  "author": "example.com",
-  "homepage": "https://electron-vite.org",
+  "author": "YO工具箱",
+  "homepage": "https://github.com/yourusername/yo_toolbox",
   "scripts": {
     "format": "prettier --write .",
     "lint": "eslint . --ext .js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts,.vue --fix",
@@ -47,10 +47,19 @@
     "vue-tsc": "^2.0.22"
   },
   "build": {
+    "appId": "com.yo.toolbox",
+    "productName": "YO工具箱",
     "compression": "store",
     "asar": false,
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "resources/app-icon.svg"
+    },
+    "mac": {
+      "icon": "resources/app-icon.svg"
+    },
+    "linux": {
+      "icon": "resources/app-icon.svg"
     },
     "nsis": {
       "oneClick": false,

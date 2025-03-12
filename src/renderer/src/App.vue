@@ -26,6 +26,24 @@
           <el-icon><Edit /></el-icon>
           <span v-if="!isSidebarCollapsed">文件重命名</span>
         </div>
+
+        <div
+          class="nav-item"
+          :class="{ active: activeTab === 'content-search' }"
+          @click="activeTab = 'content-search'"
+        >
+          <el-icon><Search /></el-icon>
+          <span v-if="!isSidebarCollapsed">内容搜索</span>
+        </div>
+
+        <div
+          class="nav-item"
+          :class="{ active: activeTab === 'settings' }"
+          @click="activeTab = 'settings'"
+        >
+          <el-icon><Setting /></el-icon>
+          <span v-if="!isSidebarCollapsed">设置</span>
+        </div>
       </div>
 
       <div class="sidebar-toggle" @click="toggleSidebar">
@@ -44,20 +62,45 @@
         <Home v-if="activeTab === 'home'" />
         <FileMove v-else-if="activeTab === 'move'" />
         <FileRename v-else-if="activeTab === 'rename'" />
+        <FileContentSearch v-else-if="activeTab === 'content-search'" />
+        <Settings v-else-if="activeTab === 'settings'" />
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { HomeFilled, FolderOpened, Edit, ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
+import { ref, onMounted } from 'vue'
+import { HomeFilled, FolderOpened, Edit, Search, Setting, ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
 import FileMove from './components/FileMove.vue'
 import FileRename from './components/FileRename.vue'
+import FileContentSearch from './components/FileContentSearch.vue'
+import Settings from './components/Settings.vue'
 import Home from './components/Home.vue'
+import { useTheme } from './composables/useTheme'
+import { useSettings } from './composables/useSettings'
+
+// 初始化主题
+useTheme()
+
+// 获取设置
+const { settings } = useSettings()
 
 const activeTab = ref('home')
 const isSidebarCollapsed = ref(false)
+
+// 在组件挂载时应用侧边栏折叠状态设置
+onMounted(() => {
+  isSidebarCollapsed.value = settings.ui.sidebarCollapsed
+})
+
+// 监听设置保存事件，更新侧边栏状态
+document.addEventListener('settings-saved', (event) => {
+  const savedSettings = (event as CustomEvent).detail
+  if (savedSettings && savedSettings.ui) {
+    isSidebarCollapsed.value = savedSettings.ui.sidebarCollapsed
+  }
+})
 
 const getPageTitle = () => {
   switch (activeTab.value) {
@@ -67,6 +110,10 @@ const getPageTitle = () => {
       return '文件移动'
     case 'rename':
       return '文件重命名'
+    case 'content-search':
+      return '文件内容搜索'
+    case 'settings':
+      return '设置'
     default:
       return ''
   }
@@ -74,20 +121,13 @@ const getPageTitle = () => {
 
 const toggleSidebar = () => {
   isSidebarCollapsed.value = !isSidebarCollapsed.value
+  // 更新设置中的侧边栏状态
+  settings.ui.sidebarCollapsed = isSidebarCollapsed.value
 }
 </script>
 
 <style>
-:root {
-  --primary-color: #409eff;
-  --sidebar-width: 180px;
-  --sidebar-collapsed-width: 56px;
-  --header-height: 50px;
-  --bg-color: #f5f7fa;
-  --text-color: #303133;
-  --text-light: #909399;
-  --border-color: #e4e7ed;
-}
+/* 全局样式变量已移至theme.css */
 
 * {
   margin: 0;
@@ -101,6 +141,7 @@ body {
   -webkit-font-smoothing: antialiased;
   color: var(--text-color);
   overflow: hidden;
+  background-color: var(--bg-color);
 }
 
 .app-container {
@@ -108,17 +149,19 @@ body {
   height: 100vh;
   width: 100vw;
   background-color: var(--bg-color);
+  color: var(--text-color);
 }
 
 .sidebar {
   width: var(--sidebar-width);
   height: 100%;
-  background-color: white;
-  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
+  background-color: var(--bg-color-secondary);
+  box-shadow: 2px 0 8px var(--shadow-color);
   transition: all 0.3s ease;
   display: flex;
   flex-direction: column;
   z-index: 1000;
+  border-right: 1px solid var(--border-color);
 }
 
 .sidebar-collapsed {
@@ -131,6 +174,7 @@ body {
   align-items: center;
   padding: 0 16px;
   border-bottom: 1px solid var(--border-color);
+  background-color: var(--bg-color-secondary);
 }
 
 .logo-image {
@@ -149,6 +193,7 @@ body {
   flex: 1;
   padding: 10px 0;
   overflow-y: auto;
+  background-color: var(--bg-color-secondary);
 }
 
 .nav-item {
@@ -158,15 +203,16 @@ body {
   cursor: pointer;
   transition: all 0.2s ease;
   color: var(--text-light);
+  background-color: var(--bg-color-secondary);
 }
 
 .nav-item:hover {
-  background-color: rgba(64, 158, 255, 0.1);
+  background-color: var(--hover-color);
   color: var(--primary-color);
 }
 
 .nav-item.active {
-  background-color: rgba(64, 158, 255, 0.15);
+  background-color: var(--active-color);
   color: var(--primary-color);
   font-weight: 500;
 }
@@ -188,6 +234,7 @@ body {
   cursor: pointer;
   border-top: 1px solid var(--border-color);
   color: var(--text-light);
+  background-color: var(--bg-color-secondary);
 }
 
 .sidebar-toggle:hover {
@@ -199,6 +246,7 @@ body {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  background-color: var(--bg-color);
 }
 
 .content-header {
@@ -207,12 +255,21 @@ body {
   align-items: center;
   padding: 0 15px;
   border-bottom: 1px solid var(--border-color);
-  background-color: white;
+  background-color: var(--bg-color-secondary);
+  color: var(--text-color);
+}
+
+.content-header h1 {
+  color: var(--text-color);
+  font-size: 18px;
+  font-weight: 500;
 }
 
 .content-body {
   flex: 1;
   overflow: auto;
   padding: 15px;
+  background-color: var(--bg-color);
+  color: var(--text-color);
 }
 </style>

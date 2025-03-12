@@ -43,13 +43,28 @@
             </ul>
           </div>
         </div>
+        
+        <div class="feature-card" @click="$emit('navigate', 'content-search')">
+          <div class="card-icon">
+            <el-icon><Search /></el-icon>
+          </div>
+          <div class="card-content">
+            <h4>内容搜索</h4>
+            <p>在文件内容中查找指定文本</p>
+            <ul>
+              <li>支持多文件类型过滤</li>
+              <li>显示匹配行及上下文</li>
+              <li>支持导出搜索结果</li>
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { FolderOpened, Edit } from '@element-plus/icons-vue'
+import { FolderOpened, Edit, Search } from '@element-plus/icons-vue'
 </script>
 
 <style scoped>
@@ -62,9 +77,9 @@ import { FolderOpened, Edit } from '@element-plus/icons-vue'
   display: flex;
   align-items: center;
   margin-bottom: 40px;
-  background-color: white;
+  background-color: var(--bg-color-secondary);
   border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2px 12px var(--shadow-color);
   padding: 40px;
 }
 
@@ -116,9 +131,9 @@ import { FolderOpened, Edit } from '@element-plus/icons-vue'
 
 .feature-card {
   display: flex;
-  background-color: white;
+  background-color: var(--bg-color-secondary);
   border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2px 12px var(--shadow-color);
   padding: 24px;
   transition: all 0.3s ease;
   cursor: pointer;
@@ -126,7 +141,7 @@ import { FolderOpened, Edit } from '@element-plus/icons-vue'
 
 .feature-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 5px 15px var(--shadow-color);
 }
 
 .card-icon {
