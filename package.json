@@ -53,13 +53,13 @@
     "asar": false,
     "win": {
       "target": "nsis",
-      "icon": "resources/app-icon.svg"
+      "icon": "build/icon.ico"
     },
     "mac": {
-      "icon": "resources/app-icon.svg"
+      "icon": "build/icon.icns"
     },
     "linux": {
-      "icon": "resources/app-icon.svg"
+      "icon": "build/icon.png"
     },
     "nsis": {
       "oneClick": false,

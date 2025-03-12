@@ -16,10 +16,5 @@ export default defineConfig({
       }
     },
     plugins: [vue()]
-  },
-  build: {
-    appId: 'com.yo.toolbox',
-    productName: 'YO工具箱',
-    icon: 'resources/app-icon.svg'
   }
 })
