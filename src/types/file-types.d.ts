@@ -32,9 +32,11 @@ export interface OperationResponse<T = unknown> {
  * 重命名操作响应
  */
 export interface RenameResponse extends OperationResponse {
-  newPath?: string
+  newPath: string
+  oldPath: string
+  fileName: string
+  renamed: boolean
 }
-
 
 /**
  * 文件内容搜索结果
