@@ -43,13 +43,28 @@
             </ul>
           </div>
         </div>
+        
+        <div class="feature-card" @click="$emit('navigate', 'content-search')">
+          <div class="card-icon">
+            <el-icon><Search /></el-icon>
+          </div>
+          <div class="card-content">
+            <h4>内容搜索</h4>
+            <p>在文件内容中查找指定文本</p>
+            <ul>
+              <li>支持多文件类型过滤</li>
+              <li>显示匹配行及上下文</li>
+              <li>支持导出搜索结果</li>
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { FolderOpened, Edit } from '@element-plus/icons-vue'
+import { FolderOpened, Edit, Search } from '@element-plus/icons-vue'
 </script>
 
 <style scoped>
