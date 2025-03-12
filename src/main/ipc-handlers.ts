@@ -6,7 +6,7 @@ import {
   batchMoveFiles, 
   batchRenameFiles,
   searchInFiles
-} from './services/file-service'
+} from './services/file'
 
 // 设置IPC处理器
 export function setupIpcHandlers(mainWindow: BrowserWindow): void {
