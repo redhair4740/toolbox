@@ -1,6 +1,6 @@
 {
   "name": "yo_toolbox",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "简单高效的文件管理解决方案",
   "main": "./out/main/index.js",
   "author": "YO工具箱",
