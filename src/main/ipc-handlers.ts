@@ -65,6 +65,56 @@ export class IpcHandlers {
       return result.filePaths[0]
     })
     
+    // 通用路径选择器对话框
+    ipcMain.handle('select-path', async (_, options: {
+      title?: string,
+      defaultPath?: string,
+      filters?: Array<{ name: string; extensions: string[] }>,
+      properties?: Array<
+        | 'openFile'
+        | 'openDirectory'
+        | 'multiSelections'
+        | 'showHiddenFiles'
+        | 'createDirectory'
+        | 'promptToCreate'
+        | 'noResolveAliases'
+        | 'treatPackageAsDirectory'
+        | 'dontAddToRecent'
+      >
+    }) => {
+      const result = await dialog.showOpenDialog(this.mainWindow, {
+        title: options.title,
+        defaultPath: options.defaultPath,
+        filters: options.filters,
+        properties: options.properties || ['openFile']
+      })
+      
+      if (result.canceled) {
+        return null
+      }
+      
+      return result.filePaths
+    })
+    
+    // 文件保存对话框
+    ipcMain.handle('select-save-path', async (_, options: {
+      title?: string,
+      defaultPath?: string,
+      filters?: Array<{ name: string; extensions: string[] }>
+    }) => {
+      const result = await dialog.showSaveDialog(this.mainWindow, {
+        title: options.title,
+        defaultPath: options.defaultPath,
+        filters: options.filters
+      })
+      
+      if (result.canceled) {
+        return null
+      }
+      
+      return result.filePath
+    })
+    
     // 搜索文件
     ipcMain.handle('search-files', async (_, { path: dirPath, extensions }) => {
       return await this.fileService.searchFiles(
@@ -117,8 +167,14 @@ export class IpcHandlers {
    * 创建进度回调函数
    */
   private createProgressCallback(channel: string) {
-    return (info: any) => {
-      this.mainWindow.webContents.send(channel, info)
+    return (event: { 
+      current: number; 
+      total: number; 
+      percentage: number;
+      status?: string;
+      details?: Record<string, unknown>;
+    }) => {
+      this.mainWindow.webContents.send(channel, event)
     }
   }
   

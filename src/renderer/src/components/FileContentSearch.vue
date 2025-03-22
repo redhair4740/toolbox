@@ -8,12 +8,14 @@
       </template>
 
       <el-form :model="searchOptions" label-width="100px">
-        <!-- 路径选择器 -->
+        <!-- 源路径选择 -->
         <el-form-item label="搜索路径">
           <path-selector
             v-model="searchPath"
-            placeholder="选择要搜索的文件夹"
-            directory-only
+            placeholder="选择搜索文件夹路径"
+            type="directory"
+            category="file-content-search"
+            :multiple="true"
             @select="handlePathSelect"
           />
         </el-form-item>
@@ -360,8 +362,12 @@ const progressFormat = (percentage: number) => {
 }
 
 // 处理路径选择
-const handlePathSelect = (path: string) => {
-  if (path) {
+const handlePathSelect = (path: string | string[]) => {
+  if (Array.isArray(path)) {
+    // 处理多选路径
+    path.forEach(p => addRecentPath(p))
+    searchPath.value = path.join(';')
+  } else if (path) {
     addRecentPath(path)
   }
 }

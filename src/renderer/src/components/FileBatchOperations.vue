@@ -22,9 +22,41 @@
             <path-selector
               v-model="formData.sourcePath"
               placeholder="选择源文件夹"
-              directory-only
+              type="directory"
+              category="batch-operations-source"
+              :multiple="true"
               @select="loadSourceFiles"
             />
+          </el-form-item>
+
+          <!-- 文件类型选择 -->
+          <el-form-item label="文件类型">
+            <el-select
+              v-model="fileExtensions"
+              multiple
+              collapse-tags
+              collapse-tags-tooltip
+              placeholder="选择文件类型（默认所有文件）"
+              style="width: 100%"
+            >
+              <el-option-group
+                v-for="category in fileCategories"
+                :key="category"
+                :label="getCategoryLabel(category)"
+              >
+                <el-option
+                  v-for="type in getFileTypesByCategory(category)"
+                  :key="type.id"
+                  :label="type.name"
+                  :value="type.id"
+                >
+                  <span>{{ type.name }}</span>
+                  <small style="color: #8c8c8c">
+                    ({{ type.extensions.join(', ') }})
+                  </small>
+                </el-option>
+              </el-option-group>
+            </el-select>
           </el-form-item>
 
           <!-- 文件筛选 -->
@@ -56,7 +88,8 @@
             <path-selector
               v-model="formData.targetPath"
               placeholder="选择目标文件夹"
-              directory-only
+              type="directory"
+              category="batch-operations-target"
             />
           </el-form-item>
 
@@ -175,6 +208,15 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import PathSelector from './common/PathSelector.vue'
 import FileOperationProgress from './common/FileOperationProgress.vue'
 import { useRecentPaths } from '../composables/useRecentPaths'
+import { useFileTypes } from '../composables/useFileTypes'
+
+// 文件类型
+const { 
+  fileExtensions, 
+  fileCategories, 
+  getCategoryLabel, 
+  getFileTypesByCategory
+} = useFileTypes()
 
 // 文件服务接口
 const fileService = window.electron.fileService
@@ -241,14 +283,18 @@ const progressTitle = computed(() => {
 })
 
 // 加载源文件
-const loadSourceFiles = async () => {
+const loadSourceFiles = async (path: string | string[]) => {
   if (!formData.sourcePath) return
   
   try {
     addLog('正在扫描文件...', 'info')
     
     // 保存到最近路径
-    addRecentPath(formData.sourcePath)
+    if (Array.isArray(path)) {
+      path.forEach(p => addRecentPath(p))
+    } else {
+      addRecentPath(path)
+    }
     
     const files = await fileService.listFiles({
       directory: formData.sourcePath,
@@ -274,7 +320,7 @@ const loadSourceFiles = async () => {
 
 // 应用筛选
 const applyFilter = () => {
-  loadSourceFiles()
+  loadSourceFiles(formData.sourcePath)
 }
 
 // 开始操作
@@ -335,7 +381,7 @@ const startOperation = async () => {
     ElMessage.success(`文件${operationName}完成`)
     
     // 重新加载源文件列表
-    loadSourceFiles()
+    loadSourceFiles(formData.sourcePath)
   } catch (error) {
     addLog(`操作失败: ${error.message}`, 'error')
     ElMessage.error(`操作失败: ${error.message}`)

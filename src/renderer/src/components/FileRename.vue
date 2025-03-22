@@ -14,6 +14,8 @@
             <path-selector
               v-model="sourcePath"
               placeholder="选择源文件夹路径"
+              category="file-rename"
+              :multiple="true"
               @select="handlePathSelect"
             />
           </el-form-item>
@@ -143,13 +145,6 @@
           </el-table-column>
         </el-table>
       </div>
-
-      <!-- 路径选择对话框 -->
-      <path-selector-dialog
-        v-model:visible="dialogVisible"
-        v-model:selected-path="dialogPath"
-        @confirm="confirmDirectory"
-      />
     </el-card>
   </div>
 </template>
@@ -158,7 +153,6 @@
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { FileWithFullPath } from '../../../types/file-types'
-import PathSelectorDialog from './common/PathSelectorDialog.vue'
 import PathSelector from './common/PathSelector.vue'
 import { useFileTypes } from '../composables/useFileTypes'
 
@@ -168,8 +162,6 @@ const formData = {}
 const sourcePath = ref('')
 const searchText = ref('')
 const replaceText = ref('')
-const dialogVisible = ref(false)
-const dialogPath = ref('')
 const tableData = ref<FileWithFullPath[]>([])
 const selectedFiles = ref<FileWithFullPath[]>([])
 const ignoreCase = ref(false)
@@ -184,8 +176,14 @@ const {
 } = useFileTypes()
 
 // 处理路径选择
-const handlePathSelect = (path: string) => {
-  sourcePath.value = path
+const handlePathSelect = (path: string | string[]) => {
+  if (Array.isArray(path)) {
+    // 处理多选模式
+    sourcePath.value = path.join(';')
+  } else {
+    sourcePath.value = path
+  }
+  
   // 当选择源路径后自动触发查询
   if (sourcePath.value && fileExtensions.value && fileExtensions.value.length > 0) {
     searchFiles()
@@ -335,17 +333,6 @@ const renameSelectedFiles = async () => {
 // 表格选择项更改处理
 const handleSelectionChange = (selection: FileWithFullPath[]) => {
   selectedFiles.value = selection
-}
-
-// 确认目录选择
-const confirmDirectory = () => {
-  sourcePath.value = dialogPath.value
-  dialogVisible.value = false
-  
-  // 当选择源路径后自动触发查询
-  if (sourcePath.value && fileExtensions.value.length > 0) {
-    searchFiles()
-  }
 }
 </script>
 

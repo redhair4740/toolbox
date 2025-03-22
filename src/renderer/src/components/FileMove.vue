@@ -18,10 +18,12 @@
           </el-form-item>
 
           <!-- 源路径选择 -->
-          <el-form-item label="源文件/文件夹">
+          <el-form-item label="源路径">
             <path-selector
               v-model="formData.sourcePath"
-              placeholder="选择源文件或文件夹"
+              placeholder="选择源文件或文件夹路径"
+              :multiple="true"
+              category="file-move-source"
               @select="handleSourceSelect"
             />
           </el-form-item>
@@ -30,8 +32,9 @@
           <el-form-item label="目标路径">
             <path-selector
               v-model="formData.targetPath"
-              placeholder="选择目标文件夹"
-              directory-only
+              placeholder="选择目标文件夹路径"
+              type="directory"
+              category="file-move-target"
               @select="handleTargetSelect"
             />
           </el-form-item>
@@ -243,27 +246,49 @@ const progressTitle = computed(() => {
 })
 
 // 源路径选择处理
-const handleSourceSelect = async (sourcePath: string) => {
+const handleSourceSelect = async (sourcePath: string | string[]) => {
   if (!sourcePath) return
   
   try {
     // 保存到最近路径
-    addRecentPath(sourcePath)
-    
-    // 获取文件信息
-    addLog(`正在获取源文件信息...`, 'info')
-    const info = await api.getFileInfo(sourcePath)
-    
-    fileInfo.value = {
-      name: info.name,
-      path: info.path,
-      isDirectory: info.isDirectory,
-      size: info.size,
-      items: info.items,
-      totalSize: info.totalSize
+    if (Array.isArray(sourcePath)) {
+      // 多选模式
+      sourcePath.forEach(p => addRecentPath(p))
+      
+      // 获取第一个文件的信息作为参考
+      const firstPath = sourcePath[0]
+      addLog(`正在获取源文件信息...`, 'info')
+      const info = await api.getFileInfo(firstPath)
+      
+      fileInfo.value = {
+        name: info.name,
+        path: info.path,
+        isDirectory: info.isDirectory,
+        size: info.size,
+        items: sourcePath.length,
+        totalSize: info.totalSize
+      }
+      
+      addLog(`成功获取源文件信息，选中了 ${sourcePath.length} 个项目`, 'success')
+    } else {
+      // 单选模式
+      addRecentPath(sourcePath)
+      
+      // 获取文件信息
+      addLog(`正在获取源文件信息...`, 'info')
+      const info = await api.getFileInfo(sourcePath)
+      
+      fileInfo.value = {
+        name: info.name,
+        path: info.path,
+        isDirectory: info.isDirectory,
+        size: info.size,
+        items: info.items,
+        totalSize: info.totalSize
+      }
+      
+      addLog(`成功获取源文件信息`, 'success')
     }
-    
-    addLog(`成功获取源文件信息`, 'success')
     
     // 更新目标路径预览
     updateTargetPreview()

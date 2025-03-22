@@ -42,6 +42,20 @@ const api = {
   // 目录对话框
   openDirectoryDialog: () => ipcRenderer.invoke('open-directory-dialog'),
   
+  // 路径选择器
+  selectPath: (options: {
+    title?: string,
+    defaultPath?: string,
+    filters?: Array<{ name: string; extensions: string[] }>,
+    properties?: string[]
+  }) => ipcRenderer.invoke('select-path', options),
+  
+  selectSavePath: (options: {
+    title?: string,
+    defaultPath?: string,
+    filters?: Array<{ name: string; extensions: string[] }>
+  }) => ipcRenderer.invoke('select-save-path', options),
+  
   // 文件搜索
   searchFiles: (path: string, extensions: string[]) =>
     ipcRenderer.invoke('search-files', { path, extensions }),
@@ -140,6 +154,18 @@ if (process.contextIsolated) {
       },
       shell: {
         openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url)
+      },
+      ipcRenderer: {
+        invoke: (channel: string, ...args: unknown[]) => {
+          const validChannels = [
+            'select-path',
+            'select-save-path'
+          ]
+          if (validChannels.includes(channel)) {
+            return ipcRenderer.invoke(channel, ...args)
+          }
+          throw new Error(`无效的IPC通道: ${channel}`)
+        }
       }
     })
     contextBridge.exposeInMainWorld('api', api)
@@ -155,6 +181,18 @@ if (process.contextIsolated) {
     },
     shell: {
       openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url)
+    },
+    ipcRenderer: {
+      invoke: (channel: string, ...args: unknown[]) => {
+        const validChannels = [
+          'select-path',
+          'select-save-path'
+        ]
+        if (validChannels.includes(channel)) {
+          return ipcRenderer.invoke(channel, ...args)
+        }
+        throw new Error(`无效的IPC通道: ${channel}`)
+      }
     }
   }
   // @ts-ignore (define in dts)
