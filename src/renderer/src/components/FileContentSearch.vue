@@ -1,5 +1,5 @@
 <template>
-  <div class="file-search">
+  <div class="file-content-search">
     <el-card>
       <template #header>
         <div class="card-header">
@@ -7,34 +7,32 @@
         </div>
       </template>
 
-      <div class="search-container">
-        <!-- 搜索配置区域 -->
-        <div class="search-config">
-          <!-- 路径选择器 -->
-          <div class="path-section">
-            <h3>搜索路径</h3>
-            <path-selector
-              v-model="searchPath"
-              placeholder="选择要搜索的文件夹"
-              directory-only
-              @select="handlePathSelect"
-            />
-          </div>
+      <el-form :model="searchOptions" label-width="100px">
+        <!-- 路径选择器 -->
+        <el-form-item label="搜索路径">
+          <path-selector
+            v-model="searchPath"
+            placeholder="选择要搜索的文件夹"
+            directory-only
+            @select="handlePathSelect"
+          />
+        </el-form-item>
 
-          <!-- 搜索选项 -->
-          <div class="search-options">
-            <el-form :model="searchOptions" label-width="100px">
-              <!-- 搜索内容 -->
-              <el-form-item label="搜索内容">
-                <el-input
-                  v-model="searchOptions.content"
-                  type="textarea"
-                  :rows="3"
-                  placeholder="输入要搜索的内容"
-                  clearable
-                />
-              </el-form-item>
+        <!-- 搜索内容 -->
+        <el-form-item label="搜索内容">
+          <el-input
+            v-model="searchOptions.content"
+            type="textarea"
+            :rows="3"
+            placeholder="输入要搜索的内容"
+            clearable
+          />
+        </el-form-item>
 
+        <!-- 高级选项 -->
+        <el-form-item>
+          <el-collapse>
+            <el-collapse-item title="高级选项" name="advanced">
               <!-- 文件类型 -->
               <el-form-item label="文件类型">
                 <el-select
@@ -81,7 +79,7 @@
               </el-form-item>
 
               <!-- 搜索选项 -->
-              <el-form-item>
+              <el-form-item label="搜索选项">
                 <el-checkbox v-model="searchOptions.recursive">包含子目录</el-checkbox>
                 <el-checkbox v-model="searchOptions.caseSensitive">区分大小写</el-checkbox>
                 <el-checkbox v-model="searchOptions.useRegex">使用正则表达式</el-checkbox>
@@ -106,108 +104,110 @@
                   />
                 </el-select>
               </el-form-item>
+            </el-collapse-item>
+          </el-collapse>
+        </el-form-item>
 
-              <!-- 搜索按钮 -->
-              <el-form-item>
-                <el-button
-                  type="primary"
-                  :loading="isSearching"
-                  @click="startSearch"
-                >
-                  开始搜索
-                </el-button>
-                <el-button
-                  :disabled="!isSearching"
-                  @click="cancelSearch"
-                >
-                  取消
-                </el-button>
-              </el-form-item>
-            </el-form>
-          </div>
-        </div>
+        <!-- 搜索按钮 -->
+        <el-form-item>
+          <el-button
+            type="primary"
+            :loading="isSearching"
+            @click="startSearch"
+          >
+            开始搜索
+          </el-button>
+          <el-button
+            :disabled="!isSearching"
+            @click="cancelSearch"
+          >
+            取消
+          </el-button>
+        </el-form-item>
 
         <!-- 搜索结果区域 -->
-        <div class="search-results">
-          <div class="results-header">
-            <h3>搜索结果</h3>
-            <div class="results-actions">
-              <el-input
-                v-model="filterQuery"
-                placeholder="过滤结果"
-                clearable
-                style="width: 200px"
-              >
-                <template #prefix>
-                  <el-icon><Search /></el-icon>
-                </template>
-              </el-input>
-              <el-button
-                type="primary"
-                :disabled="searchResults.length === 0"
-                @click="exportResults"
-              >
-                导出结果
-              </el-button>
-            </div>
-          </div>
-
-          <div class="results-container">
-            <!-- 搜索进度 -->
-            <div v-if="isSearching" class="search-progress">
-              <el-progress
-                :percentage="searchProgress.percentage"
-                :format="progressFormat"
-              />
-              <div class="progress-details">
-                <span>已搜索: {{ searchProgress.searched }} 个文件</span>
-                <span>找到: {{ searchProgress.matches }} 个匹配</span>
-                <span>当前: {{ searchProgress.currentFile }}</span>
+        <el-form-item v-if="isSearching || searchResults.length > 0">
+          <div class="search-results-container">
+            <div class="results-header">
+              <h3>搜索结果</h3>
+              <div class="results-actions">
+                <el-input
+                  v-model="filterQuery"
+                  placeholder="过滤结果"
+                  clearable
+                  style="width: 200px"
+                >
+                  <template #prefix>
+                    <el-icon><Search /></el-icon>
+                  </template>
+                </el-input>
+                <el-button
+                  type="primary"
+                  :disabled="searchResults.length === 0"
+                  @click="exportResults"
+                >
+                  导出结果
+                </el-button>
               </div>
             </div>
 
-            <!-- 搜索结果列表 -->
-            <div v-if="!isSearching && filteredResults.length === 0" class="no-results">
-              暂无搜索结果
+            <div class="results-content">
+              <!-- 搜索进度 -->
+              <div v-if="isSearching" class="search-progress">
+                <el-progress
+                  :percentage="searchProgress.percentage"
+                  :format="progressFormat"
+                />
+                <div class="progress-details">
+                  <span>已搜索: {{ searchProgress.searched }} 个文件</span>
+                  <span>找到: {{ searchProgress.matches }} 个匹配</span>
+                  <span>当前: {{ searchProgress.currentFile }}</span>
+                </div>
+              </div>
+
+              <!-- 搜索结果列表 -->
+              <div v-if="!isSearching && filteredResults.length === 0" class="no-results">
+                暂无搜索结果
+              </div>
+
+              <el-tree
+                v-else-if="filteredResults.length > 0"
+                ref="resultsTree"
+                :data="resultTreeData"
+                :props="treeProps"
+                node-key="id"
+                default-expand-all
+              >
+                <!-- 文件节点 -->
+                <template #default="{ node, data }">
+                  <div class="result-node" :class="{ 'is-file': data.type === 'file' }">
+                    <el-icon>
+                      <Document v-if="data.type === 'file'" />
+                      <Folder v-else />
+                    </el-icon>
+                    <span class="node-label">{{ node.label }}</span>
+                    <span v-if="data.type === 'file' && data.matches" class="match-count">
+                      ({{ data.matches.length }} 个匹配)
+                    </span>
+                  </div>
+                </template>
+
+                <!-- 匹配内容 -->
+                <template #match="{ data }">
+                  <div class="match-content" v-if="data && data.line">
+                    <div class="match-line">
+                      行 {{ data.line }}: {{ data.content }}
+                    </div>
+                    <div class="match-context" v-if="data.context">
+                      <pre>{{ data.context }}</pre>
+                    </div>
+                  </div>
+                </template>
+              </el-tree>
             </div>
-
-            <el-tree
-              v-else-if="filteredResults.length > 0"
-              ref="resultsTree"
-              :data="resultTreeData"
-              :props="treeProps"
-              node-key="id"
-              default-expand-all
-            >
-              <!-- 文件节点 -->
-              <template #default="{ node, data }">
-                <div class="result-node" :class="{ 'is-file': data.type === 'file' }">
-                  <el-icon>
-                    <Document v-if="data.type === 'file'" />
-                    <Folder v-else />
-                  </el-icon>
-                  <span class="node-label">{{ node.label }}</span>
-                  <span v-if="data.type === 'file' && data.matches" class="match-count">
-                    ({{ data.matches.length }} 个匹配)
-                  </span>
-                </div>
-              </template>
-
-              <!-- 匹配内容 -->
-              <template #match="{ data }">
-                <div class="match-content" v-if="data && data.line">
-                  <div class="match-line">
-                    行 {{ data.line }}: {{ data.content }}
-                  </div>
-                  <div class="match-context" v-if="data.context">
-                    <pre>{{ data.context }}</pre>
-                  </div>
-                </div>
-              </template>
-            </el-tree>
           </div>
-        </div>
-      </div>
+        </el-form-item>
+      </el-form>
     </el-card>
   </div>
 </template>
@@ -497,42 +497,32 @@ const exportResults = async () => {
 </script>
 
 <style scoped>
-.file-search {
+.file-content-search {
   padding: 1rem;
 }
 
-.search-container {
-  display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: 1rem;
-}
-
-.search-config {
+.card-header {
   display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  justify-content: space-between;
+  align-items: center;
 }
 
-.path-section {
-  margin-bottom: 1rem;
-}
-
-.search-options {
-  padding: 1rem;
-  background-color: var(--el-fill-color-light);
+.search-results-container {
+  border: 1px solid var(--el-border-color);
   border-radius: 4px;
-}
-
-.search-results {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  margin-top: 1rem;
 }
 
 .results-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid var(--el-border-color);
+}
+
+.results-header h3 {
+  margin: 0;
 }
 
 .results-actions {
@@ -541,30 +531,27 @@ const exportResults = async () => {
   align-items: center;
 }
 
-.results-container {
-  flex: 1;
-  min-height: 400px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 4px;
-  overflow: auto;
+.results-content {
+  padding: 1rem;
+  max-height: 400px;
+  overflow-y: auto;
 }
 
 .search-progress {
-  padding: 1rem;
-  border-bottom: 1px solid var(--el-border-color);
+  margin-bottom: 1rem;
 }
 
 .progress-details {
-  margin-top: 0.5rem;
   display: flex;
-  gap: 1rem;
+  justify-content: space-between;
+  margin-top: 0.5rem;
   color: var(--el-text-color-secondary);
   font-size: 0.9em;
 }
 
 .no-results {
-  padding: 2rem;
   text-align: center;
+  padding: 2rem;
   color: var(--el-text-color-secondary);
 }
 
@@ -574,8 +561,8 @@ const exportResults = async () => {
   gap: 0.5rem;
 }
 
-.node-label {
-  flex: 1;
+.result-node.is-file {
+  color: var(--el-color-primary);
 }
 
 .match-count {
@@ -584,24 +571,26 @@ const exportResults = async () => {
 }
 
 .match-content {
-  padding: 0.5rem 1rem;
-  background-color: var(--el-fill-color-lighter);
-  border-radius: 4px;
-  margin: 0.25rem 0;
+  padding: 0.5rem 0.5rem 0.5rem 2rem;
+  border-left: 2px solid var(--el-color-primary-light-8);
+  margin: 0.25rem 0 0.25rem 1.5rem;
 }
 
 .match-line {
-  font-family: monospace;
-  white-space: pre-wrap;
-  word-break: break-all;
+  color: var(--el-color-danger);
+  margin-bottom: 0.25rem;
 }
 
 .match-context {
-  margin-top: 0.5rem;
-  padding-top: 0.5rem;
-  border-top: 1px dashed var(--el-border-color);
-  font-family: monospace;
+  background-color: var(--el-fill-color-light);
+  padding: 0.5rem;
+  border-radius: 4px;
   font-size: 0.9em;
-  color: var(--el-text-color-secondary);
+  margin-top: 0.25rem;
+}
+
+.match-context pre {
+  margin: 0;
+  white-space: pre-wrap;
 }
 </style>

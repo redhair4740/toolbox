@@ -62,6 +62,38 @@
                     (覆盖前进行确认)
                   </span>
                 </el-form-item>
+
+                <el-form-item label="文件类型过滤">
+                  <el-select
+                    v-model="formData.fileTypeFilter"
+                    multiple
+                    collapse-tags
+                    collapse-tags-tooltip
+                    placeholder="选择要操作的文件类型"
+                    style="width: 100%"
+                  >
+                    <el-option-group
+                      v-for="category in fileCategories"
+                      :key="category"
+                      :label="getCategoryLabel(category)"
+                    >
+                      <el-option
+                        v-for="type in getFileTypesByCategory(category)"
+                        :key="type.id"
+                        :label="type.name"
+                        :value="type.id"
+                      >
+                        <span>{{ type.name }}</span>
+                        <small style="color: #8c8c8c">
+                          ({{ type.extensions.join(', ') }})
+                        </small>
+                      </el-option>
+                    </el-option-group>
+                  </el-select>
+                  <span class="option-hint">
+                    (只处理选定类型的文件，留空则处理所有文件)
+                  </span>
+                </el-form-item>
               </el-collapse-item>
             </el-collapse>
           </el-form-item>
@@ -147,10 +179,20 @@ import { FolderOpened } from '@element-plus/icons-vue'
 import PathSelector from './common/PathSelector.vue'
 import FileOperationProgress from './common/FileOperationProgress.vue'
 import { useRecentPaths } from '../composables/useRecentPaths'
+import { useFileTypes } from '../composables/useFileTypes'
 import path from 'path'
 
 // 文件服务接口
 const api = window.api
+
+// 使用最近路径记录
+const { addRecentPath } = useRecentPaths()
+// 使用文件类型
+const { 
+  fileCategories, 
+  getCategoryLabel, 
+  getFileTypesByCategory
+} = useFileTypes()
 
 // 表单数据
 const formData = reactive({
@@ -159,11 +201,9 @@ const formData = reactive({
   targetPath: '',
   conflictStrategy: 'ask',
   preserveStructure: true,
-  overwriteConfirm: true
+  overwriteConfirm: true,
+  fileTypeFilter: [] as string[] // 添加文件类型过滤
 })
-
-// 最近路径
-const { addRecentPath } = useRecentPaths()
 
 // 文件信息
 const fileInfo = ref<{
@@ -275,8 +315,15 @@ const executeOperation = async () => {
     const operationName = formData.operationType === 'move' ? '移动' : '复制'
     const sourceName = fileInfo.value?.name || path.basename(formData.sourcePath)
     
+    // 检查是否选择了文件类型过滤器
+    let typeFilterMessage = '';
+    if (formData.fileTypeFilter && formData.fileTypeFilter.length > 0) {
+      const fileTypeNames = formData.fileTypeFilter.join(', ');
+      typeFilterMessage = `\n仅处理以下文件类型: ${fileTypeNames}`;
+    }
+    
     const confirmResult = await ElMessageBox.confirm(
-      `确定要${operationName} "${sourceName}" 到 "${formData.targetPath}" 吗？`,
+      `确定要${operationName} "${sourceName}" 到 "${formData.targetPath}" 吗？${typeFilterMessage}`,
       '确认操作',
       {
         confirmButtonText: '确定',
@@ -301,7 +348,8 @@ const executeOperation = async () => {
       targetPath: formData.targetPath,
       conflictStrategy: formData.conflictStrategy,
       preserveStructure: formData.preserveStructure,
-      overwriteConfirm: formData.overwriteConfirm
+      overwriteConfirm: formData.overwriteConfirm,
+      fileTypeFilter: formData.fileTypeFilter
     }
     
     // 设置进度回调
@@ -353,7 +401,8 @@ const resetForm = () => {
     targetPath: '',
     conflictStrategy: 'ask',
     preserveStructure: true,
-    overwriteConfirm: true
+    overwriteConfirm: true,
+    fileTypeFilter: []
   })
   
   fileInfo.value = null

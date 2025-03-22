@@ -16,315 +16,317 @@
         </div>
       </template>
 
-      <el-tabs v-model="activeTab">
-        <!-- 常规设置 -->
-        <el-tab-pane label="常规" name="general">
-          <el-form
-            ref="generalForm"
-            :model="settings.general"
-            label-width="140px"
-          >
-            <!-- 主题设置 -->
-            <el-form-item label="主题">
-              <el-radio-group 
-                v-model="settings.general.theme"
-                @change="onThemeChange"
-              >
-                <el-radio-button value="system">跟随系统</el-radio-button>
-                <el-radio-button value="light">浅色</el-radio-button>
-                <el-radio-button value="dark">深色</el-radio-button>
-              </el-radio-group>
-            </el-form-item>
+      <div class="settings-content">
+        <el-tabs v-model="activeTab">
+          <!-- 常规设置 -->
+          <el-tab-pane label="常规" name="general">
+            <el-form
+              ref="generalForm"
+              :model="settings.general"
+              label-width="140px"
+            >
+              <!-- 主题设置 -->
+              <el-form-item label="主题">
+                <el-radio-group 
+                  v-model="settings.general.theme"
+                  @change="onThemeChange"
+                >
+                  <el-radio-button value="system">跟随系统</el-radio-button>
+                  <el-radio-button value="light">浅色</el-radio-button>
+                  <el-radio-button value="dark">深色</el-radio-button>
+                </el-radio-group>
+              </el-form-item>
 
-            <!-- 语言设置 -->
-            <el-form-item label="语言">
-              <el-select v-model="settings.general.language" style="width: 200px">
-                <el-option label="简体中文" value="zh-CN" />
-                <el-option label="English" value="en-US" />
-              </el-select>
-            </el-form-item>
+              <!-- 语言设置 -->
+              <el-form-item label="语言">
+                <el-select v-model="settings.general.language" style="width: 200px">
+                  <el-option label="简体中文" value="zh-CN" />
+                  <el-option label="English" value="en-US" />
+                </el-select>
+              </el-form-item>
 
-            <!-- 界面设置 -->
-            <el-form-item label="界面缩放">
-              <el-slider
-                v-model="settings.general.zoom"
-                :min="50"
-                :max="150"
-                :step="10"
-                :format-tooltip="value => `${value}%`"
-                style="width: 300px"
-              />
-            </el-form-item>
-
-            <!-- 开机启动 -->
-            <el-form-item>
-              <el-checkbox v-model="settings.general.autoStart">开机自动启动</el-checkbox>
-            </el-form-item>
-
-            <!-- 托盘设置 -->
-            <el-form-item>
-              <el-checkbox v-model="settings.general.minimizeToTray">最小化到托盘</el-checkbox>
-            </el-form-item>
-            
-            <!-- UI相关设置 -->
-            <el-form-item label="侧边栏">
-              <el-checkbox 
-                v-model="settings.ui.sidebarCollapsed" 
-                label="默认收起侧边栏"
-                @change="updateSidebarState"
-              />
-            </el-form-item>
-          </el-form>
-        </el-tab-pane>
-
-        <!-- 文件操作设置 -->
-        <el-tab-pane label="文件操作" name="file">
-          <el-form
-            ref="fileForm"
-            :model="settings.file"
-            label-width="140px"
-          >
-            <!-- 默认操作设置 -->
-            <el-form-item label="默认冲突处理">
-              <el-select v-model="settings.file.defaultConflictStrategy" style="width: 200px">
-                <el-option label="询问" value="ask" />
-                <el-option label="覆盖" value="overwrite" />
-                <el-option label="跳过" value="skip" />
-                <el-option label="自动重命名" value="rename" />
-              </el-select>
-            </el-form-item>
-
-            <!-- 性能设置 -->
-            <el-form-item label="并行处理">
-              <el-switch v-model="settings.file.enableParallel" />
-              <span class="setting-hint">启用多线程并行处理文件操作</span>
-            </el-form-item>
-
-            <el-form-item label="最大并行数">
-              <el-input-number
-                v-model="settings.file.maxParallel"
-                :min="1"
-                :max="16"
-                :disabled="!settings.file.enableParallel"
-              />
-              <span class="setting-hint">同时处理的最大文件数</span>
-            </el-form-item>
-
-            <!-- 确认设置 -->
-            <el-form-item>
-              <el-checkbox v-model="settings.file.confirmBeforeDelete">
-                删除前确认
-              </el-checkbox>
-            </el-form-item>
-
-            <el-form-item>
-              <el-checkbox v-model="settings.file.preserveTimestamp">
-                保留文件时间戳
-              </el-checkbox>
-            </el-form-item>
-
-            <!-- 缓冲区大小 -->
-            <el-form-item label="缓冲区大小">
-              <el-select v-model="settings.file.bufferSize" style="width: 200px">
-                <el-option label="4 KB" value="4096" />
-                <el-option label="8 KB" value="8192" />
-                <el-option label="16 KB" value="16384" />
-                <el-option label="32 KB" value="32768" />
-                <el-option label="64 KB" value="65536" />
-              </el-select>
-              <span class="setting-hint">文件读写操作的缓冲区大小</span>
-            </el-form-item>
-          </el-form>
-        </el-tab-pane>
-
-        <!-- 搜索设置 -->
-        <el-tab-pane label="搜索" name="search">
-          <el-form
-            ref="searchForm"
-            :model="settings.search"
-            label-width="140px"
-          >
-            <!-- 搜索性能设置 -->
-            <el-form-item label="搜索线程数">
-              <el-input-number
-                v-model="settings.search.threads"
-                :min="1"
-                :max="16"
-              />
-              <span class="setting-hint">文件内容搜索使用的线程数</span>
-            </el-form-item>
-
-            <!-- 默认搜索选项 -->
-            <el-form-item>
-              <el-checkbox v-model="settings.search.ignoreCase">
-                默认忽略大小写
-              </el-checkbox>
-            </el-form-item>
-
-            <el-form-item>
-              <el-checkbox v-model="settings.search.includeHidden">
-                包含隐藏文件
-              </el-checkbox>
-            </el-form-item>
-
-            <!-- 搜索限制 -->
-            <el-form-item label="最大文件大小">
-              <el-input-number
-                v-model="settings.search.maxFileSize"
-                :min="1"
-                :step="1"
-                :step-strictly="true"
-              />
-              <el-select
-                v-model="settings.search.maxFileSizeUnit"
-                style="width: 100px; margin-left: 10px"
-              >
-                <el-option label="KB" value="KB" />
-                <el-option label="MB" value="MB" />
-                <el-option label="GB" value="GB" />
-              </el-select>
-              <span class="setting-hint">超过此大小的文件将被跳过</span>
-            </el-form-item>
-
-            <!-- 排除设置 -->
-            <el-form-item label="排除的文件">
-              <el-select
-                v-model="settings.search.excludedFiles"
-                multiple
-                filterable
-                allow-create
-                default-first-option
-                style="width: 100%"
-                placeholder="输入要排除的文件模式"
-              >
-                <el-option
-                  v-for="pattern in defaultExcludedFiles"
-                  :key="pattern"
-                  :label="pattern"
-                  :value="pattern"
+              <!-- 界面设置 -->
+              <el-form-item label="界面缩放">
+                <el-slider
+                  v-model="settings.general.zoom"
+                  :min="50"
+                  :max="150"
+                  :step="10"
+                  :format-tooltip="value => `${value}%`"
+                  style="width: 300px"
                 />
-              </el-select>
-            </el-form-item>
-          </el-form>
-        </el-tab-pane>
+              </el-form-item>
 
-        <!-- 高级设置 -->
-        <el-tab-pane label="高级" name="advanced">
-          <el-form
-            ref="advancedForm"
-            :model="settings.advanced"
-            label-width="140px"
-          >
-            <!-- 日志设置 -->
-            <el-form-item label="日志级别">
-              <el-select v-model="settings.advanced.logLevel" style="width: 200px">
-                <el-option label="调试" value="debug" />
-                <el-option label="信息" value="info" />
-                <el-option label="警告" value="warn" />
-                <el-option label="错误" value="error" />
-              </el-select>
-            </el-form-item>
+              <!-- 开机启动 -->
+              <el-form-item>
+                <el-checkbox v-model="settings.general.autoStart">开机自动启动</el-checkbox>
+              </el-form-item>
 
-            <el-form-item label="日志保留天数">
-              <el-input-number
-                v-model="settings.advanced.logRetention"
-                :min="1"
-                :max="90"
-              />
-              <span class="setting-hint">超过此天数的日志将被自动清理</span>
-            </el-form-item>
+              <!-- 托盘设置 -->
+              <el-form-item>
+                <el-checkbox v-model="settings.general.minimizeToTray">最小化到托盘</el-checkbox>
+              </el-form-item>
+              
+              <!-- UI相关设置 -->
+              <el-form-item label="侧边栏">
+                <el-checkbox 
+                  v-model="settings.ui.sidebarCollapsed" 
+                  label="默认收起侧边栏"
+                  @change="updateSidebarState"
+                />
+              </el-form-item>
+            </el-form>
+          </el-tab-pane>
 
-            <!-- 缓存设置 -->
-            <el-form-item label="缓存大小限制">
-              <el-input-number
-                v-model="settings.advanced.maxCacheSize"
-                :min="100"
-                :step="100"
-              />
-              <span class="setting-hint">MB，超过此大小将清理最早的缓存</span>
-            </el-form-item>
+          <!-- 文件操作设置 -->
+          <el-tab-pane label="文件操作" name="file">
+            <el-form
+              ref="fileForm"
+              :model="settings.file"
+              label-width="140px"
+            >
+              <!-- 默认操作设置 -->
+              <el-form-item label="默认冲突处理">
+                <el-select v-model="settings.file.defaultConflictStrategy" style="width: 200px">
+                  <el-option label="询问" value="ask" />
+                  <el-option label="覆盖" value="overwrite" />
+                  <el-option label="跳过" value="skip" />
+                  <el-option label="自动重命名" value="rename" />
+                </el-select>
+              </el-form-item>
 
-            <!-- 调试选项 -->
-            <el-form-item>
-              <el-checkbox v-model="settings.advanced.devTools">
-                启用开发者工具
-              </el-checkbox>
-            </el-form-item>
+              <!-- 性能设置 -->
+              <el-form-item label="并行处理">
+                <el-switch v-model="settings.file.enableParallel" />
+                <span class="setting-hint">启用多线程并行处理文件操作</span>
+              </el-form-item>
 
-            <!-- 重置按钮 -->
-            <el-form-item>
-              <el-button
-                type="danger"
-                @click="confirmReset"
-              >
-                重置所有设置
-              </el-button>
-              <span class="setting-hint">将所有设置恢复为默认值</span>
-            </el-form-item>
-          </el-form>
-        </el-tab-pane>
+              <el-form-item label="最大并行数">
+                <el-input-number
+                  v-model="settings.file.maxParallel"
+                  :min="1"
+                  :max="16"
+                  :disabled="!settings.file.enableParallel"
+                />
+                <span class="setting-hint">同时处理的最大文件数</span>
+              </el-form-item>
 
-        <!-- 关于 -->
-        <el-tab-pane label="关于" name="about">
-          <div class="about-section">
-            <div class="app-info">
-              <img src="../assets/logo.svg" class="app-logo" alt="logo" />
-              <h2>{{ appInfo.name }}</h2>
-              <p class="version">版本 {{ appInfo.version }}</p>
-              <p class="description">{{ appInfo.description }}</p>
+              <!-- 确认设置 -->
+              <el-form-item>
+                <el-checkbox v-model="settings.file.confirmBeforeDelete">
+                  删除前确认
+                </el-checkbox>
+              </el-form-item>
+
+              <el-form-item>
+                <el-checkbox v-model="settings.file.preserveTimestamp">
+                  保留文件时间戳
+                </el-checkbox>
+              </el-form-item>
+
+              <!-- 缓冲区大小 -->
+              <el-form-item label="缓冲区大小">
+                <el-select v-model="settings.file.bufferSize" style="width: 200px">
+                  <el-option label="4 KB" value="4096" />
+                  <el-option label="8 KB" value="8192" />
+                  <el-option label="16 KB" value="16384" />
+                  <el-option label="32 KB" value="32768" />
+                  <el-option label="64 KB" value="65536" />
+                </el-select>
+                <span class="setting-hint">文件读写操作的缓冲区大小</span>
+              </el-form-item>
+            </el-form>
+          </el-tab-pane>
+
+          <!-- 搜索设置 -->
+          <el-tab-pane label="搜索" name="search">
+            <el-form
+              ref="searchForm"
+              :model="settings.search"
+              label-width="140px"
+            >
+              <!-- 搜索性能设置 -->
+              <el-form-item label="搜索线程数">
+                <el-input-number
+                  v-model="settings.search.threads"
+                  :min="1"
+                  :max="16"
+                />
+                <span class="setting-hint">文件内容搜索使用的线程数</span>
+              </el-form-item>
+
+              <!-- 默认搜索选项 -->
+              <el-form-item>
+                <el-checkbox v-model="settings.search.ignoreCase">
+                  默认忽略大小写
+                </el-checkbox>
+              </el-form-item>
+
+              <el-form-item>
+                <el-checkbox v-model="settings.search.includeHidden">
+                  包含隐藏文件
+                </el-checkbox>
+              </el-form-item>
+
+              <!-- 搜索限制 -->
+              <el-form-item label="最大文件大小">
+                <el-input-number
+                  v-model="settings.search.maxFileSize"
+                  :min="1"
+                  :step="1"
+                  :step-strictly="true"
+                />
+                <el-select
+                  v-model="settings.search.maxFileSizeUnit"
+                  style="width: 100px; margin-left: 10px"
+                >
+                  <el-option label="KB" value="KB" />
+                  <el-option label="MB" value="MB" />
+                  <el-option label="GB" value="GB" />
+                </el-select>
+                <span class="setting-hint">超过此大小的文件将被跳过</span>
+              </el-form-item>
+
+              <!-- 排除设置 -->
+              <el-form-item label="排除的文件">
+                <el-select
+                  v-model="settings.search.excludedFiles"
+                  multiple
+                  filterable
+                  allow-create
+                  default-first-option
+                  style="width: 100%"
+                  placeholder="输入要排除的文件模式"
+                >
+                  <el-option
+                    v-for="pattern in defaultExcludedFiles"
+                    :key="pattern"
+                    :label="pattern"
+                    :value="pattern"
+                  />
+                </el-select>
+              </el-form-item>
+            </el-form>
+          </el-tab-pane>
+
+          <!-- 高级设置 -->
+          <el-tab-pane label="高级" name="advanced">
+            <el-form
+              ref="advancedForm"
+              :model="settings.advanced"
+              label-width="140px"
+            >
+              <!-- 日志设置 -->
+              <el-form-item label="日志级别">
+                <el-select v-model="settings.advanced.logLevel" style="width: 200px">
+                  <el-option label="调试" value="debug" />
+                  <el-option label="信息" value="info" />
+                  <el-option label="警告" value="warn" />
+                  <el-option label="错误" value="error" />
+                </el-select>
+              </el-form-item>
+
+              <el-form-item label="日志保留天数">
+                <el-input-number
+                  v-model="settings.advanced.logRetention"
+                  :min="1"
+                  :max="90"
+                />
+                <span class="setting-hint">超过此天数的日志将被自动清理</span>
+              </el-form-item>
+
+              <!-- 缓存设置 -->
+              <el-form-item label="缓存大小限制">
+                <el-input-number
+                  v-model="settings.advanced.maxCacheSize"
+                  :min="100"
+                  :step="100"
+                />
+                <span class="setting-hint">MB，超过此大小将清理最早的缓存</span>
+              </el-form-item>
+
+              <!-- 调试选项 -->
+              <el-form-item>
+                <el-checkbox v-model="settings.advanced.devTools">
+                  启用开发者工具
+                </el-checkbox>
+              </el-form-item>
+
+              <!-- 重置按钮 -->
+              <el-form-item>
+                <el-button
+                  type="danger"
+                  @click="confirmReset"
+                >
+                  重置所有设置
+                </el-button>
+                <span class="setting-hint">将所有设置恢复为默认值</span>
+              </el-form-item>
+            </el-form>
+          </el-tab-pane>
+
+          <!-- 关于 -->
+          <el-tab-pane label="关于" name="about">
+            <div class="about-section">
+              <div class="app-info">
+                <img src="../assets/logo.svg" class="app-logo" alt="logo" />
+                <h2>{{ appInfo.name }}</h2>
+                <p class="version">版本 {{ appInfo.version }}</p>
+                <p class="description">{{ appInfo.description }}</p>
+              </div>
+
+              <div class="links">
+                <el-button
+                  type="primary"
+                  link
+                  @click="openExternalLink(appInfo.homepage)"
+                >
+                  项目主页
+                </el-button>
+                <el-button
+                  type="primary"
+                  link
+                  @click="openExternalLink(appInfo.repository)"
+                >
+                  源代码仓库
+                </el-button>
+                <el-button
+                  type="primary"
+                  link
+                  @click="openExternalLink(appInfo.bugs)"
+                >
+                  问题反馈
+                </el-button>
+              </div>
+
+              <div class="system-info">
+                <h3>系统信息</h3>
+                <el-descriptions :column="1" border>
+                  <el-descriptions-item label="操作系统">
+                    {{ systemInfo.os }}
+                  </el-descriptions-item>
+                  <el-descriptions-item label="处理器架构">
+                    {{ systemInfo.arch }}
+                  </el-descriptions-item>
+                  <el-descriptions-item label="Node.js">
+                    {{ systemInfo.nodejs }}
+                  </el-descriptions-item>
+                  <el-descriptions-item label="Electron">
+                    {{ systemInfo.electron }}
+                  </el-descriptions-item>
+                  <el-descriptions-item label="Chrome">
+                    {{ systemInfo.chrome }}
+                  </el-descriptions-item>
+                </el-descriptions>
+              </div>
+
+              <div class="credits">
+                <p>© 2024 YoToolbox. All rights reserved.</p>
+              </div>
             </div>
-
-            <div class="links">
-              <el-button
-                type="primary"
-                link
-                @click="openExternalLink(appInfo.homepage)"
-              >
-                项目主页
-              </el-button>
-              <el-button
-                type="primary"
-                link
-                @click="openExternalLink(appInfo.repository)"
-              >
-                源代码仓库
-              </el-button>
-              <el-button
-                type="primary"
-                link
-                @click="openExternalLink(appInfo.bugs)"
-              >
-                问题反馈
-              </el-button>
-            </div>
-
-            <div class="system-info">
-              <h3>系统信息</h3>
-              <el-descriptions :column="1" border>
-                <el-descriptions-item label="操作系统">
-                  {{ systemInfo.os }}
-                </el-descriptions-item>
-                <el-descriptions-item label="处理器架构">
-                  {{ systemInfo.arch }}
-                </el-descriptions-item>
-                <el-descriptions-item label="Node.js">
-                  {{ systemInfo.nodejs }}
-                </el-descriptions-item>
-                <el-descriptions-item label="Electron">
-                  {{ systemInfo.electron }}
-                </el-descriptions-item>
-                <el-descriptions-item label="Chrome">
-                  {{ systemInfo.chrome }}
-                </el-descriptions-item>
-              </el-descriptions>
-            </div>
-
-            <div class="credits">
-              <p>© 2024 YoToolbox. All rights reserved.</p>
-            </div>
-          </div>
-        </el-tab-pane>
-      </el-tabs>
+          </el-tab-pane>
+        </el-tabs>
+      </div>
     </el-card>
   </div>
 </template>
@@ -520,6 +522,15 @@ onMounted(() => {
   align-items: center;
 }
 
+.header-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.settings-content {
+  padding: 0.5rem 0;
+}
+
 .setting-hint {
   margin-left: 0.5rem;
   color: var(--el-text-color-secondary);
@@ -531,7 +542,7 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   gap: 2rem;
-  padding: 2rem;
+  padding: 1rem 0;
 }
 
 .app-info {
@@ -539,8 +550,8 @@ onMounted(() => {
 }
 
 .app-logo {
-  width: 128px;
-  height: 128px;
+  width: 96px;
+  height: 96px;
   margin-bottom: 1rem;
 }
 
@@ -569,4 +580,4 @@ onMounted(() => {
   font-size: 0.9em;
   text-align: center;
 }
-</style>`
+</style>

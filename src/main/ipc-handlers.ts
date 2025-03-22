@@ -95,11 +95,12 @@ export class IpcHandlers {
     })
     
     // 批量移动文件
-    ipcMain.handle('batch-move-files', async (_, { files, destination }) => {
+    ipcMain.handle('batch-move-files', async (_, { files, destination, fileTypeFilter }) => {
       return await this.fileService.batchMoveFiles(
         files,
         destination,
-        this.createProgressCallback('move-progress')
+        this.createProgressCallback('move-progress'),
+        fileTypeFilter || []
       )
     })
     
