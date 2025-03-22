@@ -116,6 +116,13 @@
             >
               重置
             </el-button>
+            <el-button
+              v-if="formData.sourcePath && !isProcessing"
+              type="info"
+              @click="showFileList"
+            >
+              查看文件明细
+            </el-button>
           </el-form-item>
         </el-form>
       </div>
@@ -172,13 +179,68 @@
         @cancel="cancelOperation"
       />
     </el-card>
+
+    <!-- 文件列表弹窗 -->
+    <el-dialog
+      v-model="fileListDialogVisible"
+      title="文件明细"
+      width="70%"
+      :close-on-click-modal="false"
+    >
+      <div v-if="isLoadingFileList" class="file-list-loading">
+        <el-icon class="loading-icon" :size="24"><Loading /></el-icon>
+        <span>正在加载文件列表...</span>
+      </div>
+      <div v-else-if="fileList.length === 0" class="file-list-empty">
+        <el-empty description="没有找到文件" />
+      </div>
+      <div v-else class="file-list-container">
+        <div class="file-list-header">
+          <div class="file-count">共找到 {{ fileList.length }} 个文件</div>
+          <el-input
+            v-model="fileListFilter"
+            placeholder="搜索文件名..."
+            clearable
+            prefix-icon="Search"
+            style="width: 300px"
+          />
+        </div>
+        <el-table
+          :data="filteredFileList"
+          style="width: 100%"
+          max-height="400px"
+          border
+        >
+          <el-table-column label="文件名" min-width="200">
+            <template #default="{ row }">
+              <div class="file-name-cell">
+                <el-icon><Document /></el-icon>
+                <span>{{ row.name }}</span>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="目录" min-width="250" prop="directory" show-overflow-tooltip />
+          <el-table-column label="大小" width="120">
+            <template #default="{ row }">
+              {{ formatFileSize(row.size) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="修改时间" width="180" prop="modifiedTime" />
+        </el-table>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="fileListDialogVisible = false">关闭</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, reactive } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { FolderOpened } from '@element-plus/icons-vue'
+import { FolderOpened, Document, Loading } from '@element-plus/icons-vue'
 import PathSelector from './common/PathSelector.vue'
 import FileOperationProgress from './common/FileOperationProgress.vue'
 import { useRecentPaths } from '../composables/useRecentPaths'
@@ -218,6 +280,28 @@ const fileInfo = ref<{
   totalSize?: number
 } | null>(null)
 
+// 文件列表相关状态
+const fileListDialogVisible = ref(false)
+const isLoadingFileList = ref(false)
+const fileList = ref<Array<{
+  name: string;
+  path: string;
+  directory: string;
+  size: number;
+  modifiedTime: string;
+}>>([])
+const fileListFilter = ref('')
+
+// 过滤后的文件列表
+const filteredFileList = computed(() => {
+  if (!fileListFilter.value) return fileList.value
+  const searchQuery = fileListFilter.value.toLowerCase()
+  return fileList.value.filter(file => 
+    file.name.toLowerCase().includes(searchQuery) || 
+    file.directory.toLowerCase().includes(searchQuery)
+  )
+})
+
 // 目标路径预览
 const targetPreview = ref<string | null>(null)
 
@@ -244,6 +328,41 @@ const operationButtonText = computed(() => {
 const progressTitle = computed(() => {
   return formData.operationType === 'move' ? '文件移动进度' : '文件复制进度'
 })
+
+// 显示文件列表详情
+const showFileList = async () => {
+  fileListDialogVisible.value = true
+  isLoadingFileList.value = true
+  fileList.value = []
+  
+  try {
+    // 获取完整的文件列表
+    const sourcePaths = Array.isArray(formData.sourcePath) 
+      ? formData.sourcePath.split(';') 
+      : [formData.sourcePath]
+    
+    const results = await api.getFileList(sourcePaths[0], {
+      recursive: true,
+      fileTypeFilter: formData.fileTypeFilter,
+      includeDirectories: false
+    })
+    
+    fileList.value = results.map(file => ({
+      name: path.basename(file.path),
+      path: file.path,
+      directory: path.dirname(file.path),
+      size: file.size,
+      modifiedTime: new Date(file.modifiedTime).toLocaleString()
+    }))
+    
+    addLog(`已加载 ${fileList.value.length} 个文件到明细列表`, 'info')
+  } catch (error) {
+    addLog(`获取文件列表失败: ${error.message}`, 'error')
+    ElMessage.error('获取文件列表失败')
+  } finally {
+    isLoadingFileList.value = false
+  }
+}
 
 // 源路径选择处理
 const handleSourceSelect = async (sourcePath: string | string[]) => {
@@ -514,4 +633,51 @@ const formatFileSize = (size?: number) => {
   border-radius: 4px;
   word-break: break-all;
 }
-</style>`
+
+/* 文件列表样式 */
+.file-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.file-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.file-count {
+  font-weight: bold;
+}
+
+.file-list-loading,
+.file-list-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  gap: 1rem;
+}
+
+.loading-icon {
+  animation: rotating 2s linear infinite;
+}
+
+.file-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+@keyframes rotating {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+</style>
