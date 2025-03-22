@@ -19,42 +19,44 @@
                 <Folder />
               </el-icon>
             </el-button>
-            <el-dropdown 
-              v-if="showRecentPaths && recentPaths.length > 0" 
-              trigger="click" 
-              @command="selectRecentPath"
-              class="history-dropdown"
-            >
-              <el-button class="history-button">
-                <el-icon><Clock /></el-icon>
-              </el-button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item v-for="(path, index) in recentPaths" :key="index" :command="path">
-                    <div class="recent-path-item-dropdown">
-                      <span class="path-text-dropdown">{{ formatPath(path) }}</span>
-                      <el-button
-                        type="danger"
-                        size="small"
-                        circle
-                        @click.stop="removeRecentPath(path)"
-                      >
-                        <el-icon><Close /></el-icon>
-                      </el-button>
-                    </div>
-                  </el-dropdown-item>
-                  <el-dropdown-item divided>
-                    <div @click.stop="clearRecentPaths">
-                      <el-icon><Delete /></el-icon>
-                      <span>清空历史</span>
-                    </div>
-                  </el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
           </div>
         </template>
       </el-input>
+      
+      <!-- 历史按钮独立放置在右侧 -->
+      <el-dropdown 
+        v-if="showRecentPaths && recentPaths.length > 0" 
+        trigger="click" 
+        @command="selectRecentPath"
+        class="history-dropdown"
+      >
+        <el-button class="standalone-history-button">
+          <el-icon><Clock /></el-icon>
+        </el-button>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item v-for="(path, index) in recentPaths" :key="index" :command="path">
+              <div class="recent-path-item-dropdown">
+                <span class="path-text-dropdown">{{ formatPath(path) }}</span>
+                <el-button
+                  type="danger"
+                  size="small"
+                  circle
+                  @click.stop="removeRecentPath(path)"
+                >
+                  <el-icon><Close /></el-icon>
+                </el-button>
+              </div>
+            </el-dropdown-item>
+            <el-dropdown-item divided>
+              <div @click.stop="clearRecentPaths">
+                <el-icon><Delete /></el-icon>
+                <span>清空历史</span>
+              </div>
+            </el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
     </div>
     
     <!-- 多路径选择显示区域 -->
@@ -321,6 +323,8 @@ initSelectedPaths()
 
 .path-input-container {
   width: 100%;
+  display: flex;
+  align-items: center;
 }
 
 .path-buttons-container {
@@ -328,10 +332,12 @@ initSelectedPaths()
   align-items: center;
 }
 
-.history-button {
-  border-left: none;
-  border-top-left-radius: 0;
-  border-bottom-left-radius: 0;
+.history-dropdown {
+  margin-left: 8px;
+}
+
+.standalone-history-button {
+  border-radius: 4px;
 }
 
 .recent-path-item-dropdown {
