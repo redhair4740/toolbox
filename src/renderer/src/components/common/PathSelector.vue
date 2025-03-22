@@ -23,21 +23,20 @@
         </template>
       </el-input>
       
-      <!-- 历史按钮独立放置在右侧 -->
       <el-dropdown 
         v-if="showRecentPaths && recentPaths.length > 0" 
         trigger="click" 
         @command="selectRecentPath"
         class="history-dropdown"
       >
-        <el-button class="standalone-history-button">
+        <el-button class="history-btn">
           <el-icon><Clock /></el-icon>
         </el-button>
         <template #dropdown>
           <el-dropdown-menu>
             <el-dropdown-item v-for="(path, index) in recentPaths" :key="index" :command="path">
-              <div class="recent-path-item-dropdown">
-                <span class="path-text-dropdown">{{ formatPath(path) }}</span>
+              <div class="recent-path-item">
+                <span class="path-text">{{ formatPath(path) }}</span>
                 <el-button
                   type="danger"
                   size="small"
@@ -59,7 +58,6 @@
       </el-dropdown>
     </div>
     
-    <!-- 多路径选择显示区域 -->
     <div v-if="multiple && selectedPaths.length > 0" class="selected-paths-container">
       <div v-for="(path, index) in selectedPaths" :key="index" class="selected-path-item">
         <el-tag closable @close="removePath(index)" class="path-tag">
@@ -336,18 +334,18 @@ initSelectedPaths()
   margin-left: 8px;
 }
 
-.standalone-history-button {
+.history-btn {
   border-radius: 4px;
 }
 
-.recent-path-item-dropdown {
+.recent-path-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
   width: 100%;
 }
 
-.path-text-dropdown {
+.path-text {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -356,7 +354,6 @@ initSelectedPaths()
   max-width: 200px;
 }
 
-/* 多路径选择样式 */
 .selected-paths-container {
   margin-top: 10px;
   display: flex;
