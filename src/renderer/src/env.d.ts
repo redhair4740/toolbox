@@ -10,4 +10,18 @@ declare module '*.vue' {
 // 扩展 Window 接口
 interface Window {
   api: WindowApi
+  electron?: {
+    system?: {
+      getInfo: () => Promise<{
+        os: string;
+        arch: string;
+        nodejs: string;
+        electron: string;
+        chrome: string;
+      }>
+    },
+    shell?: {
+      openExternal: (url: string) => Promise<void>
+    }
+  }
 }

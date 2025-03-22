@@ -4,6 +4,14 @@ import { electronAPI } from '@electron-toolkit/preload'
 // 进度事件监听器类型
 type ProgressListener = (progress: { current: number; total: number; file: string }) => void
 
+// 文件操作选项类型
+interface FileOperationOptions {
+  files: string[];
+  targetPath: string;
+  preserveStructure?: boolean;
+  conflictStrategy?: 'ask' | 'overwrite' | 'skip' | 'rename';
+}
+
 // 存储事件监听器
 const listeners = {
   searchProgress: new Set<ProgressListener>(),
@@ -49,15 +57,18 @@ const api = {
     listeners.contentSearchProgress.add(callback)
     return () => listeners.contentSearchProgress.delete(callback)
   },
+  cancelSearch: () => ipcRenderer.invoke('cancel-search'),
   
   // 文件移动
-  cutFile: (source: string, destination: string, fileName: string) =>
-    ipcRenderer.invoke('cut-file', { source, destination, fileName }),
+  moveFileSimple: (source: string, destination: string, fileName: string) =>
+    ipcRenderer.invoke('move-file', { source, destination, fileName }),
   batchMoveFiles: (files: { source: string; fileName: string }[], destination: string) =>
     ipcRenderer.invoke('batch-move-files', { files, destination }),
   onMoveProgress: (callback: ProgressListener) => {
     listeners.moveProgress.add(callback)
-    return () => listeners.moveProgress.delete(callback)
+    return () => {
+      listeners.moveProgress.delete(callback)
+    }
   },
   
   // 文件重命名
@@ -88,7 +99,33 @@ const api = {
   onRenameProgress: (callback: ProgressListener) => {
     listeners.renameProgress.add(callback)
     return () => listeners.renameProgress.delete(callback)
-  }
+  },
+  
+  // 文件操作
+  getFileInfo: (filePath: string) => 
+    ipcRenderer.invoke('file:stats', filePath),
+  copyFile: (options: FileOperationOptions, callback?: ProgressListener) => {
+    if (callback) {
+      listeners.moveProgress.add(callback)
+      return ipcRenderer.invoke('file:copy', options)
+        .finally(() => listeners.moveProgress.delete(callback))
+    }
+    return ipcRenderer.invoke('file:copy', options)
+  },
+  moveFile: (options: FileOperationOptions, callback?: ProgressListener) => {
+    if (callback) {
+      listeners.moveProgress.add(callback)
+      return ipcRenderer.invoke('file:move', options)
+        .finally(() => listeners.moveProgress.delete(callback))
+    }
+    return ipcRenderer.invoke('file:move', options)
+  },
+  cancelOperation: () => ipcRenderer.invoke('file:cancelOperation'),
+  saveTextFile: (options: { content: string, fileName: string, title?: string }) =>
+    ipcRenderer.invoke('file:write', {
+      path: options.fileName,
+      content: options.content
+    })
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to
@@ -96,14 +133,30 @@ const api = {
 // just add to the DOM global.
 if (process.contextIsolated) {
   try {
-    contextBridge.exposeInMainWorld('electron', electronAPI)
+    contextBridge.exposeInMainWorld('electron', {
+      ...electronAPI,
+      system: {
+        getInfo: () => ipcRenderer.invoke('system:getInfo')
+      },
+      shell: {
+        openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url)
+      }
+    })
     contextBridge.exposeInMainWorld('api', api)
   } catch (error) {
-    console.error(error)
+    console.error('无法暴露API到渲染进程:', error)
   }
 } else {
   // @ts-ignore (define in dts)
-  window.electron = electronAPI
+  window.electron = {
+    ...electronAPI,
+    system: {
+      getInfo: () => ipcRenderer.invoke('system:getInfo')
+    },
+    shell: {
+      openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url)
+    }
+  }
   // @ts-ignore (define in dts)
   window.api = api
 }

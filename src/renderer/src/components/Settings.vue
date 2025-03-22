@@ -1,387 +1,572 @@
 <template>
-  <div class="settings-container">
-    <el-tabs type="border-card">
-      <!-- 界面设置 -->
-      <el-tab-pane label="界面设置">
-        <div class="settings-section">
-          <h3>外观</h3>
-          <div class="setting-item">
-            <span class="setting-label">主题</span>
-            <el-select v-model="settings.ui.theme" placeholder="选择主题">
-              <el-option label="浅色" value="light" />
-              <el-option label="深色" value="dark" />
-              <el-option label="跟随系统" value="system" />
-            </el-select>
-          </div>
-          
-          <div class="setting-item">
-            <span class="setting-label">侧边栏默认状态</span>
-            <el-switch
-              v-model="settings.ui.sidebarCollapsed"
-              active-text="折叠"
-              inactive-text="展开"
-            />
-          </div>
-          
-          <h3>操作确认</h3>
-          <div class="setting-item">
-            <span class="setting-label">操作前确认</span>
-            <el-switch
-              v-model="settings.ui.confirmBeforeOperation"
-              active-text="启用"
-              inactive-text="禁用"
-            />
-            <div class="setting-description">执行批量操作前显示确认对话框</div>
-          </div>
-          
-          <div class="setting-item">
-            <span class="setting-label">显示操作日志</span>
-            <el-switch
-              v-model="settings.ui.showOperationLogs"
-              active-text="启用"
-              inactive-text="禁用"
-            />
-            <div class="setting-description">在操作完成后显示操作日志</div>
-          </div>
-          
-          <div class="settings-actions">
-            <el-button type="primary" @click="resetCategorySettings('ui')">重置界面设置</el-button>
-          </div>
-        </div>
-      </el-tab-pane>
-      
-      <!-- 文件操作设置 -->
-      <el-tab-pane label="文件操作">
-        <div class="settings-section">
-          <h3>文件移动</h3>
-          <div class="setting-item">
-            <span class="setting-label">保留时间戳</span>
-            <el-switch
-              v-model="settings.file.preserveTimestamp"
-              active-text="启用"
-              inactive-text="禁用"
-            />
-            <div class="setting-description">移动文件时保留原始的修改时间</div>
-          </div>
-          
-          <div class="setting-item">
-            <span class="setting-label">覆盖已存在的文件</span>
-            <el-switch
-              v-model="settings.file.overwriteExisting"
-              active-text="启用"
-              inactive-text="禁用"
-            />
-            <div class="setting-description">目标位置存在同名文件时自动覆盖</div>
-          </div>
-          
-          <h3>文件重命名</h3>
-          <div class="setting-item">
-            <span class="setting-label">创建备份</span>
-            <el-switch
-              v-model="settings.file.createBackup"
-              active-text="启用"
-              inactive-text="禁用"
-            />
-            <div class="setting-description">重命名前创建文件备份</div>
-          </div>
-          
-          <h3>历史记录</h3>
-          <div class="setting-item">
-            <span class="setting-label">最近路径数量</span>
-            <el-slider
-              v-model="settings.file.maxRecentPaths"
-              :min="1"
-              :max="10"
-              :step="1"
-              show-stops
-              show-input
-            />
-            <div class="setting-description">保存的最近访问路径数量</div>
-          </div>
-          
-          <div class="setting-item">
-            <span class="setting-label">默认文件类型</span>
-            <el-select
-              v-model="settings.file.defaultExtensions"
-              multiple
-              collapse-tags
-              placeholder="选择默认文件类型"
+  <div class="settings">
+    <el-card>
+      <template #header>
+        <div class="card-header">
+          <h2>应用设置</h2>
+          <div class="header-actions">
+            <el-button
+              type="primary"
+              :loading="isSaving"
+              @click="saveSettings"
             >
-              <el-option v-for="item in fileTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
-            </el-select>
-            <div class="setting-description">默认搜索的文件类型</div>
-          </div>
-          
-          <div class="settings-actions">
-            <el-button type="primary" @click="resetCategorySettings('file')">重置文件设置</el-button>
+              保存设置
+            </el-button>
           </div>
         </div>
-      </el-tab-pane>
-      
-      <!-- 性能设置 -->
-      <el-tab-pane label="性能设置">
-        <div class="settings-section">
-          <h3>批处理</h3>
-          <div class="setting-item">
-            <span class="setting-label">批处理大小</span>
-            <el-slider
-              v-model="settings.performance.batchSize"
-              :min="5"
-              :max="50"
-              :step="5"
-              show-stops
-              show-input
-            />
-            <div class="setting-description">每批处理的文件数量</div>
+      </template>
+
+      <el-tabs v-model="activeTab">
+        <!-- 常规设置 -->
+        <el-tab-pane label="常规" name="general">
+          <el-form
+            ref="generalForm"
+            :model="settings.general"
+            label-width="140px"
+          >
+            <!-- 主题设置 -->
+            <el-form-item label="主题">
+              <el-radio-group 
+                v-model="settings.general.theme"
+                @change="onThemeChange"
+              >
+                <el-radio-button value="system">跟随系统</el-radio-button>
+                <el-radio-button value="light">浅色</el-radio-button>
+                <el-radio-button value="dark">深色</el-radio-button>
+              </el-radio-group>
+            </el-form-item>
+
+            <!-- 语言设置 -->
+            <el-form-item label="语言">
+              <el-select v-model="settings.general.language" style="width: 200px">
+                <el-option label="简体中文" value="zh-CN" />
+                <el-option label="English" value="en-US" />
+              </el-select>
+            </el-form-item>
+
+            <!-- 界面设置 -->
+            <el-form-item label="界面缩放">
+              <el-slider
+                v-model="settings.general.zoom"
+                :min="50"
+                :max="150"
+                :step="10"
+                :format-tooltip="value => `${value}%`"
+                style="width: 300px"
+              />
+            </el-form-item>
+
+            <!-- 开机启动 -->
+            <el-form-item>
+              <el-checkbox v-model="settings.general.autoStart">开机自动启动</el-checkbox>
+            </el-form-item>
+
+            <!-- 托盘设置 -->
+            <el-form-item>
+              <el-checkbox v-model="settings.general.minimizeToTray">最小化到托盘</el-checkbox>
+            </el-form-item>
+            
+            <!-- UI相关设置 -->
+            <el-form-item label="侧边栏">
+              <el-checkbox 
+                v-model="settings.ui.sidebarCollapsed" 
+                label="默认收起侧边栏"
+                @change="updateSidebarState"
+              />
+            </el-form-item>
+          </el-form>
+        </el-tab-pane>
+
+        <!-- 文件操作设置 -->
+        <el-tab-pane label="文件操作" name="file">
+          <el-form
+            ref="fileForm"
+            :model="settings.file"
+            label-width="140px"
+          >
+            <!-- 默认操作设置 -->
+            <el-form-item label="默认冲突处理">
+              <el-select v-model="settings.file.defaultConflictStrategy" style="width: 200px">
+                <el-option label="询问" value="ask" />
+                <el-option label="覆盖" value="overwrite" />
+                <el-option label="跳过" value="skip" />
+                <el-option label="自动重命名" value="rename" />
+              </el-select>
+            </el-form-item>
+
+            <!-- 性能设置 -->
+            <el-form-item label="并行处理">
+              <el-switch v-model="settings.file.enableParallel" />
+              <span class="setting-hint">启用多线程并行处理文件操作</span>
+            </el-form-item>
+
+            <el-form-item label="最大并行数">
+              <el-input-number
+                v-model="settings.file.maxParallel"
+                :min="1"
+                :max="16"
+                :disabled="!settings.file.enableParallel"
+              />
+              <span class="setting-hint">同时处理的最大文件数</span>
+            </el-form-item>
+
+            <!-- 确认设置 -->
+            <el-form-item>
+              <el-checkbox v-model="settings.file.confirmBeforeDelete">
+                删除前确认
+              </el-checkbox>
+            </el-form-item>
+
+            <el-form-item>
+              <el-checkbox v-model="settings.file.preserveTimestamp">
+                保留文件时间戳
+              </el-checkbox>
+            </el-form-item>
+
+            <!-- 缓冲区大小 -->
+            <el-form-item label="缓冲区大小">
+              <el-select v-model="settings.file.bufferSize" style="width: 200px">
+                <el-option label="4 KB" value="4096" />
+                <el-option label="8 KB" value="8192" />
+                <el-option label="16 KB" value="16384" />
+                <el-option label="32 KB" value="32768" />
+                <el-option label="64 KB" value="65536" />
+              </el-select>
+              <span class="setting-hint">文件读写操作的缓冲区大小</span>
+            </el-form-item>
+          </el-form>
+        </el-tab-pane>
+
+        <!-- 搜索设置 -->
+        <el-tab-pane label="搜索" name="search">
+          <el-form
+            ref="searchForm"
+            :model="settings.search"
+            label-width="140px"
+          >
+            <!-- 搜索性能设置 -->
+            <el-form-item label="搜索线程数">
+              <el-input-number
+                v-model="settings.search.threads"
+                :min="1"
+                :max="16"
+              />
+              <span class="setting-hint">文件内容搜索使用的线程数</span>
+            </el-form-item>
+
+            <!-- 默认搜索选项 -->
+            <el-form-item>
+              <el-checkbox v-model="settings.search.ignoreCase">
+                默认忽略大小写
+              </el-checkbox>
+            </el-form-item>
+
+            <el-form-item>
+              <el-checkbox v-model="settings.search.includeHidden">
+                包含隐藏文件
+              </el-checkbox>
+            </el-form-item>
+
+            <!-- 搜索限制 -->
+            <el-form-item label="最大文件大小">
+              <el-input-number
+                v-model="settings.search.maxFileSize"
+                :min="1"
+                :step="1"
+                :step-strictly="true"
+              />
+              <el-select
+                v-model="settings.search.maxFileSizeUnit"
+                style="width: 100px; margin-left: 10px"
+              >
+                <el-option label="KB" value="KB" />
+                <el-option label="MB" value="MB" />
+                <el-option label="GB" value="GB" />
+              </el-select>
+              <span class="setting-hint">超过此大小的文件将被跳过</span>
+            </el-form-item>
+
+            <!-- 排除设置 -->
+            <el-form-item label="排除的文件">
+              <el-select
+                v-model="settings.search.excludedFiles"
+                multiple
+                filterable
+                allow-create
+                default-first-option
+                style="width: 100%"
+                placeholder="输入要排除的文件模式"
+              >
+                <el-option
+                  v-for="pattern in defaultExcludedFiles"
+                  :key="pattern"
+                  :label="pattern"
+                  :value="pattern"
+                />
+              </el-select>
+            </el-form-item>
+          </el-form>
+        </el-tab-pane>
+
+        <!-- 高级设置 -->
+        <el-tab-pane label="高级" name="advanced">
+          <el-form
+            ref="advancedForm"
+            :model="settings.advanced"
+            label-width="140px"
+          >
+            <!-- 日志设置 -->
+            <el-form-item label="日志级别">
+              <el-select v-model="settings.advanced.logLevel" style="width: 200px">
+                <el-option label="调试" value="debug" />
+                <el-option label="信息" value="info" />
+                <el-option label="警告" value="warn" />
+                <el-option label="错误" value="error" />
+              </el-select>
+            </el-form-item>
+
+            <el-form-item label="日志保留天数">
+              <el-input-number
+                v-model="settings.advanced.logRetention"
+                :min="1"
+                :max="90"
+              />
+              <span class="setting-hint">超过此天数的日志将被自动清理</span>
+            </el-form-item>
+
+            <!-- 缓存设置 -->
+            <el-form-item label="缓存大小限制">
+              <el-input-number
+                v-model="settings.advanced.maxCacheSize"
+                :min="100"
+                :step="100"
+              />
+              <span class="setting-hint">MB，超过此大小将清理最早的缓存</span>
+            </el-form-item>
+
+            <!-- 调试选项 -->
+            <el-form-item>
+              <el-checkbox v-model="settings.advanced.devTools">
+                启用开发者工具
+              </el-checkbox>
+            </el-form-item>
+
+            <!-- 重置按钮 -->
+            <el-form-item>
+              <el-button
+                type="danger"
+                @click="confirmReset"
+              >
+                重置所有设置
+              </el-button>
+              <span class="setting-hint">将所有设置恢复为默认值</span>
+            </el-form-item>
+          </el-form>
+        </el-tab-pane>
+
+        <!-- 关于 -->
+        <el-tab-pane label="关于" name="about">
+          <div class="about-section">
+            <div class="app-info">
+              <img src="../assets/logo.svg" class="app-logo" alt="logo" />
+              <h2>{{ appInfo.name }}</h2>
+              <p class="version">版本 {{ appInfo.version }}</p>
+              <p class="description">{{ appInfo.description }}</p>
+            </div>
+
+            <div class="links">
+              <el-button
+                type="primary"
+                link
+                @click="openExternalLink(appInfo.homepage)"
+              >
+                项目主页
+              </el-button>
+              <el-button
+                type="primary"
+                link
+                @click="openExternalLink(appInfo.repository)"
+              >
+                源代码仓库
+              </el-button>
+              <el-button
+                type="primary"
+                link
+                @click="openExternalLink(appInfo.bugs)"
+              >
+                问题反馈
+              </el-button>
+            </div>
+
+            <div class="system-info">
+              <h3>系统信息</h3>
+              <el-descriptions :column="1" border>
+                <el-descriptions-item label="操作系统">
+                  {{ systemInfo.os }}
+                </el-descriptions-item>
+                <el-descriptions-item label="处理器架构">
+                  {{ systemInfo.arch }}
+                </el-descriptions-item>
+                <el-descriptions-item label="Node.js">
+                  {{ systemInfo.nodejs }}
+                </el-descriptions-item>
+                <el-descriptions-item label="Electron">
+                  {{ systemInfo.electron }}
+                </el-descriptions-item>
+                <el-descriptions-item label="Chrome">
+                  {{ systemInfo.chrome }}
+                </el-descriptions-item>
+              </el-descriptions>
+            </div>
+
+            <div class="credits">
+              <p>© 2024 YoToolbox. All rights reserved.</p>
+            </div>
           </div>
-          
-          <div class="setting-item">
-            <span class="setting-label">并行操作</span>
-            <el-switch
-              v-model="settings.performance.parallelOperations"
-              active-text="启用"
-              inactive-text="禁用"
-            />
-            <div class="setting-description">同时处理多个文件（可能会增加系统负载）</div>
-          </div>
-          
-          <h3>搜索限制</h3>
-          <div class="setting-item">
-            <span class="setting-label">搜索深度限制</span>
-            <el-input-number
-              v-model="settings.performance.searchDepthLimit"
-              :min="0"
-              :max="20"
-              :step="1"
-            />
-            <div class="setting-description">子目录搜索的最大深度（0表示无限制）</div>
-          </div>
-          
-          <div class="settings-actions">
-            <el-button type="primary" @click="resetCategorySettings('performance')">重置性能设置</el-button>
-          </div>
-        </div>
-      </el-tab-pane>
-      
-      <!-- 关于 -->
-      <el-tab-pane label="关于">
-        <div class="settings-section about-section">
-          <div class="app-info">
-            <img src="../assets/logo-gradient.svg" alt="YO工具箱" class="app-logo" />
-            <h2>YO工具箱</h2>
-            <div class="version">版本 1.0.2</div>
-            <p>简单高效的文件管理解决方案</p>
-          </div>
-          
-          <div class="app-description">
-            <p>YO工具箱是一款桌面应用程序，提供文件批量移动、重命名等功能，帮助您更高效地管理文件。</p>
-            <p>基于 Electron、Vue 和 TypeScript 开发。</p>
-          </div>
-          
-          <div class="app-credits">
-            <h3>技术栈</h3>
-            <ul>
-              <li>Electron</li>
-              <li>Vue 3</li>
-              <li>TypeScript</li>
-              <li>Element Plus</li>
-            </ul>
-          </div>
-        </div>
-      </el-tab-pane>
-    </el-tabs>
-    
-    <div class="global-actions">
-      <el-button type="default" @click="resetAllSettings">重置所有设置</el-button>
-      <el-button type="primary" @click="saveAndClose" :disabled="!isDirty">保存设置</el-button>
-    </div>
+        </el-tab-pane>
+      </el-tabs>
+    </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { useSettings } from '../composables/useSettings'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { watch } from 'vue'
+import { useSettings } from '../composables/useSettings'
 import { useTheme } from '../composables/useTheme'
 
-const { settings, isDirty, saveSettings, resetSettings, resetCategory } = useSettings()
-const { applyTheme } = useTheme()
-
-// 监听主题变化并立即应用
-watch(() => settings.ui.theme, (newTheme) => {
-  applyTheme(newTheme)
-})
-
-// 文件类型选项
-const fileTypeOptions = [
-  { value: '.txt', label: 'txt' },
-  { value: '.mkv', label: 'mkv' },
-  { value: '.mp4', label: 'mp4' },
-  { value: '.iso', label: 'iso' },
-  { value: '.avi', label: 'avi' },
-  { value: '.mpg', label: 'mpg' },
-  { value: '.ass', label: 'ass' },
-  { value: '.jpg', label: 'jpg' },
-  { value: '.png', label: 'png' },
-  { value: '.zip', label: 'zip' }
+// 默认的排除文件模式
+const defaultExcludedFiles = [
+  'node_modules/**/*',
+  '.git/**/*',
+  '*.log',
+  '*.tmp',
+  '*.temp',
+  '*.swp',
+  '*~'
 ]
 
-// 保存设置并关闭
-const saveAndClose = () => {
-  if (saveSettings()) {
+// 状态
+const activeTab = ref('general')
+const isSaving = ref(false)
+
+// 使用设置组合式API
+const { 
+  settings,
+  saveSettings: save, 
+  resetSettings 
+} = useSettings()
+const { updateTheme } = useTheme()
+
+// 创建一个加载设置的函数，只用于重置后重新加载
+const loadSettings = async () => {
+  // 此函数现在只会在重置设置后被调用
+  return settings;
+}
+
+// 应用信息
+const appInfo = reactive({
+  name: 'YoToolbox',
+  version: '1.0.0',
+  description: '一个强大的文件管理工具箱',
+  homepage: 'https://github.com/username/yo-toolbox',
+  repository: 'https://github.com/username/yo-toolbox',
+  bugs: 'https://github.com/username/yo-toolbox/issues'
+})
+
+// 系统信息
+const systemInfo = reactive({
+  os: '',
+  arch: '',
+  nodejs: '',
+  electron: '',
+  chrome: ''
+})
+
+// 初始化标志
+const isInitialized = ref(false)
+
+// 初始化
+const init = async () => {
+  try {
+    // 防止重复初始化
+    if (isInitialized.value) return;
+
+    // 加载系统信息
+    if (window.electron && window.electron.system) {
+      try {
+        const info = await window.electron.system.getInfo()
+        Object.assign(systemInfo, info)
+      } catch (systemError) {
+        console.error('加载系统信息失败:', systemError)
+      }
+    }
+    
+    // 从localStorage获取当前主题并同步到设置中
+    const currentThemeMode = localStorage.getItem('theme_mode')
+    if (currentThemeMode && currentThemeMode !== settings.general.theme) {
+      settings.general.theme = currentThemeMode
+      updateTheme(settings.general.theme)
+    }
+    
+    // 标记为已初始化
+    isInitialized.value = true
+  } catch (error) {
+    console.error('加载设置失败:', error)
+    ElMessage.error('加载设置失败')
+  }
+}
+
+// 保存设置
+const saveSettings = async () => {
+  try {
+    isSaving.value = true
+    
+    // 保存设置
+    await save({
+      general: {...settings.general},
+      file: {...settings.file},
+      search: {...settings.search},
+      advanced: {...settings.advanced},
+      ui: {...settings.ui}
+    })
+    
+    // 应用主题
+    updateTheme(settings.general.theme)
+    
     ElMessage.success('设置已保存')
-  } else {
+  } catch (error) {
+    console.error('保存设置失败:', error)
     ElMessage.error('保存设置失败')
+  } finally {
+    isSaving.value = false
   }
 }
 
-// 重置分类设置前确认
-const resetCategorySettings = async (category: 'ui' | 'file' | 'performance') => {
-  try {
-    await ElMessageBox.confirm('确定要重置此分类的设置吗？', '确认', {
-      confirmButtonText: '确定',
+// 确认重置
+const confirmReset = () => {
+  ElMessageBox.confirm(
+    '确定要重置所有设置吗？此操作不可恢复！',
+    '确认重置',
+    {
+      confirmButtonText: '重置',
       cancelButtonText: '取消',
       type: 'warning'
-    })
-    resetCategory(category)
-    ElMessage.success('已重置设置')
-  } catch {
-    // 用户取消
+    }
+  ).then(async () => {
+    try {
+      await resetSettings()
+      Object.assign(settings, await loadSettings())
+      ElMessage.success('设置已重置')
+    } catch (error) {
+      ElMessage.error('重置设置失败')
+    }
+  }).catch(() => {})
+}
+
+// 打开外部链接
+const openExternalLink = (url: string) => {
+  try {
+    if (window.electron && window.electron.shell && window.electron.shell.openExternal) {
+      window.electron.shell.openExternal(url)
+        .catch(error => {
+          console.error('打开外部链接失败:', error)
+          ElMessage.error('打开外部链接失败')
+        })
+    } else {
+      console.warn('shell.openExternal API不可用')
+      // 降级处理：尝试使用普通window.open
+      window.open(url, '_blank', 'noopener,noreferrer')
+    }
+  } catch (error) {
+    console.error('打开链接时出错:', error)
+    ElMessage.error('打开链接失败')
   }
 }
 
-// 重置所有设置前确认
-const resetAllSettings = async () => {
-  try {
-    await ElMessageBox.confirm('确定要重置所有设置吗？此操作不可撤销。', '警告', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-    resetSettings()
-    ElMessage.success('已重置所有设置')
-  } catch {
-    // 用户取消
-  }
+// 更新侧边栏状态
+const updateSidebarState = () => {
+  // 触发自定义事件来通知应用更新侧边栏状态
+  const customEvent = new CustomEvent('settings-saved', {
+    detail: {
+      ui: {
+        sidebarCollapsed: settings.ui.sidebarCollapsed
+      }
+    }
+  })
+  document.dispatchEvent(customEvent)
 }
+
+// 主题变化处理
+const onThemeChange = () => {
+  updateTheme(settings.general.theme)
+}
+
+// 在组件挂载时执行初始化
+onMounted(() => {
+  console.log('Settings组件挂载，执行初始化')
+  init()
+})
 </script>
 
 <style scoped>
-.settings-container {
-  height: 100%;
+.settings {
+  padding: 1rem;
+}
+
+.card-header {
   display: flex;
-  flex-direction: column;
-}
-
-:deep(.el-tabs) {
-  flex: 1;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-:deep(.el-tabs__content) {
-  flex: 1;
-  overflow: auto;
-  padding: 20px;
-}
-
-.settings-section {
-  max-width: 800px;
-}
-
-.settings-section h3 {
-  margin-top: 20px;
-  margin-bottom: 10px;
-  font-size: 16px;
-  font-weight: 500;
-  color: var(--text-color);
-  border-bottom: 1px solid var(--border-color);
-  padding-bottom: 8px;
-}
-
-.setting-item {
-  margin-bottom: 16px;
-  display: flex;
-  flex-wrap: wrap;
+  justify-content: space-between;
   align-items: center;
 }
 
-.setting-label {
-  width: 150px;
-  font-size: 14px;
-  color: var(--text-color);
-}
-
-.setting-description {
-  width: 100%;
-  margin-top: 4px;
-  margin-left: 150px;
-  font-size: 12px;
-  color: var(--text-light);
-}
-
-.settings-actions {
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px dashed var(--border-color);
-}
-
-.global-actions {
-  padding: 16px;
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  border-top: 1px solid var(--border-color);
+.setting-hint {
+  margin-left: 0.5rem;
+  color: var(--el-text-color-secondary);
+  font-size: 0.9em;
 }
 
 .about-section {
   display: flex;
   flex-direction: column;
   align-items: center;
-  text-align: center;
+  gap: 2rem;
+  padding: 2rem;
 }
 
 .app-info {
-  margin-bottom: 20px;
+  text-align: center;
 }
 
 .app-logo {
-  width: 80px;
-  height: 80px;
-  margin-bottom: 10px;
+  width: 128px;
+  height: 128px;
+  margin-bottom: 1rem;
 }
 
 .version {
-  font-size: 14px;
-  color: var(--text-light);
-  margin-bottom: 10px;
+  color: var(--el-text-color-secondary);
+  margin: 0.5rem 0;
 }
 
-.app-description {
+.description {
   max-width: 600px;
-  margin-bottom: 20px;
+  margin: 1rem auto;
 }
 
-.app-credits {
-  text-align: left;
+.links {
+  display: flex;
+  gap: 1rem;
+}
+
+.system-info {
   width: 100%;
   max-width: 600px;
 }
 
-.app-credits ul {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
-  list-style: none;
-  padding: 0;
+.credits {
+  color: var(--el-text-color-secondary);
+  font-size: 0.9em;
+  text-align: center;
 }
-
-.app-credits li {
-  background-color: var(--bg-color-secondary);
-  padding: 6px 12px;
-  border-radius: 4px;
-  font-size: 14px;
-  color: var(--text-color);
-}
-</style> 
+</style>`

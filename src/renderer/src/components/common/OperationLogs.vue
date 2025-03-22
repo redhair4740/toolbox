@@ -1,205 +1,336 @@
-<template>
-  <div class="logs-container">
-    <div class="logs-header">
-      <h3>操作日志</h3>
-      <div class="header-actions">
-        <el-button type="primary" size="small" @click="exportLogsToFile">
-          <el-icon><Download /></el-icon>
-          <span>导出日志</span>
-        </el-button>
-        <el-button type="danger" size="small" @click="confirmClearLogs">
-          <el-icon><Delete /></el-icon>
-          <span>清空日志</span>
-        </el-button>
-      </div>
-    </div>
-    
-    <div class="logs-body">
-      <el-empty v-if="logs.length === 0" description="暂无操作日志" />
-      
-      <div v-else class="logs-list">
-        <div v-for="log in logs" :key="log.id" class="log-item">
-          <div class="log-header">
-            <div class="log-type" :class="getTypeClass(log.type)">{{ getTypeText(log.type) }}</div>
-            <div class="log-time">{{ formatTime(log.timestamp) }}</div>
+`<template>
+  <div class="operation-logs">
+    <el-card class="log-card">
+      <template #header>
+        <div class="log-header">
+          <span>操作日志</span>
+          <div class="log-actions">
+            <el-select
+              v-model="currentCategory"
+              placeholder="日志类别"
+              size="small"
+              style="width: 120px"
+            >
+              <el-option label="全部" value="all" />
+              <el-option
+                v-for="category in availableCategories"
+                :key="category"
+                :label="getCategoryLabel(category)"
+                :value="category"
+              />
+            </el-select>
+            <el-switch
+              v-model="autoScroll"
+              active-text="自动滚动"
+            />
+            <el-button
+              type="primary"
+              size="small"
+              @click="clearLogs"
+            >
+              清除
+            </el-button>
+            <el-button
+              type="success"
+              size="small"
+              @click="exportLogs"
+            >
+              导出
+            </el-button>
           </div>
-          <div class="log-message">{{ log.message }}</div>
-          <div v-if="log.details" class="log-details">
-            <el-collapse>
-              <el-collapse-item title="详细信息">
-                <pre>{{ log.details }}</pre>
-              </el-collapse-item>
-            </el-collapse>
+        </div>
+      </template>
+      
+      <div
+        ref="logContainer"
+        class="log-container"
+        @scroll="handleScroll"
+      >
+        <div v-if="filteredLogs.length === 0" class="no-logs">
+          暂无日志记录
+        </div>
+        
+        <div
+          v-for="(log, index) in filteredLogs"
+          :key="index"
+          class="log-item"
+          :class="[log.type, { expanded: expandedLogs.includes(index) }]"
+          @click="toggleExpand(index)"
+        >
+          <div class="log-header-row">
+            <span class="log-time">{{ formatTime(log.time) }}</span>
+            <span class="log-category">{{ getCategoryLabel(log.category) }}</span>
+            <span class="log-message">{{ getShortMessage(log.message) }}</span>
+          </div>
+          <div v-if="expandedLogs.includes(index)" class="log-details">
+            <pre>{{ log.message }}</pre>
+            <div v-if="log.details" class="log-extra-details">
+              <pre>{{ log.details }}</pre>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { Download, Delete } from '@element-plus/icons-vue'
-import { ElMessageBox } from 'element-plus'
-import { useOperationLog, type OperationType } from '../../composables/useOperationLog'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { useOperationLog } from '../../composables/useOperationLog'
 
-const { logs, clearLogs, formatTime, exportLogs } = useOperationLog()
+// 日志类型映射
+const categoryLabels: Record<string, string> = {
+  'all': '全部',
+  'search': '文件搜索',
+  'rename': '文件重命名',
+  'move': '文件移动',
+  'copy': '文件复制',
+  'batch': '批量操作',
+  'system': '系统操作'
+}
 
-// 获取操作类型文本
-const getTypeText = (type: OperationType): string => {
-  switch (type) {
-    case 'search': return '搜索'
-    case 'move': return '移动'
-    case 'rename': return '重命名'
-    case 'other': return '其他'
-    default: return '未知'
+// 日志状态
+const currentCategory = ref('all')
+const autoScroll = ref(true)
+const isUserScrolling = ref(false)
+const expandedLogs = ref<number[]>([])
+const logContainer = ref<HTMLElement | null>(null)
+
+// 使用日志组合式API
+const { logs, clearAllLogs } = useOperationLog()
+
+// 计算可用的日志类别
+const availableCategories = computed(() => {
+  const categories = new Set<string>()
+  logs.value.forEach(log => categories.add(log.category))
+  return Array.from(categories)
+})
+
+// 根据当前选择的类别过滤日志
+const filteredLogs = computed(() => {
+  if (currentCategory.value === 'all') {
+    return logs.value
+  }
+  return logs.value.filter(log => log.category === currentCategory.value)
+})
+
+// 监听日志变化，自动滚动
+watch(filteredLogs, () => {
+  if (autoScroll.value && !isUserScrolling.value) {
+    scrollToBottom()
+  }
+}, { deep: true })
+
+// 获取日志类别显示名称
+const getCategoryLabel = (category: string) => {
+  return categoryLabels[category] || category
+}
+
+// 格式化时间
+const formatTime = (date: Date) => {
+  return date.toLocaleTimeString('zh-CN', {
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  })
+}
+
+// 获取短消息（用于折叠显示）
+const getShortMessage = (message: string) => {
+  const maxLength = 100
+  if (message.length <= maxLength) return message
+  return message.substring(0, maxLength) + '...'
+}
+
+// 切换日志展开状态
+const toggleExpand = (index: number) => {
+  const position = expandedLogs.value.indexOf(index)
+  if (position > -1) {
+    expandedLogs.value.splice(position, 1)
+  } else {
+    expandedLogs.value.push(index)
   }
 }
 
-// 获取操作类型样式类
-const getTypeClass = (type: OperationType): string => {
-  switch (type) {
-    case 'search': return 'type-search'
-    case 'move': return 'type-move'
-    case 'rename': return 'type-rename'
-    case 'other': return 'type-other'
-    default: return ''
+// 滚动到底部
+const scrollToBottom = async () => {
+  await nextTick()
+  if (logContainer.value) {
+    logContainer.value.scrollTop = logContainer.value.scrollHeight
   }
 }
 
-// 导出日志到文件
-const exportLogsToFile = () => {
-  if (logs.value.length === 0) {
-    ElMessageBox.alert('没有可导出的日志', '提示')
-    return
-  }
+// 处理滚动事件
+const handleScroll = () => {
+  if (!logContainer.value) return
   
-  const content = exportLogs()
-  const blob = new Blob([content], { type: 'text/plain' })
-  const url = URL.createObjectURL(blob)
+  const { scrollTop, scrollHeight, clientHeight } = logContainer.value
+  const isAtBottom = scrollHeight - scrollTop - clientHeight < 10
   
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `操作日志_${new Date().toISOString().slice(0, 10)}.txt`
-  a.click()
-  
-  URL.revokeObjectURL(url)
+  isUserScrolling.value = !isAtBottom
 }
 
-// 清空日志前确认
-const confirmClearLogs = async () => {
-  if (logs.value.length === 0) return
-  
+// 清除日志
+const clearLogs = () => {
+  ElMessageBox.confirm('确定要清除所有日志记录吗？', '确认操作', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(() => {
+    clearAllLogs()
+    expandedLogs.value = []
+    ElMessage.success('日志已清除')
+  }).catch(() => {})
+}
+
+// 导出日志
+const exportLogs = async () => {
   try {
-    await ElMessageBox.confirm('确定要清空所有日志吗？此操作不可恢复。', '警告', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
+    // 准备日志内容
+    const logContent = logs.value.map(log => {
+      const time = formatTime(log.time)
+      const category = getCategoryLabel(log.category)
+      return `[${time}] [${category}] [${log.type}] ${log.message}`
+    }).join('\n')
+    
+    // 生成文件名
+    const now = new Date()
+    const fileName = `yo_toolbox_logs_${now.getFullYear()}-${
+      String(now.getMonth() + 1).padStart(2, '0')
+    }-${
+      String(now.getDate()).padStart(2, '0')
+    }_${
+      String(now.getHours()).padStart(2, '0')
+    }-${
+      String(now.getMinutes()).padStart(2, '0')
+    }.txt`
+    
+    // 调用保存文件API
+    await window.electron.fileService.saveTextFile({
+      content: logContent,
+      fileName: fileName,
+      title: '保存日志文件'
     })
-    clearLogs()
-  } catch {
-    // 用户取消
+    
+    ElMessage.success('日志导出成功')
+  } catch (error) {
+    ElMessage.error(`导出日志失败: ${error.message}`)
   }
 }
+
+// 生命周期钩子
+onMounted(() => {
+  scrollToBottom()
+})
 </script>
 
 <style scoped>
-.logs-container {
+.operation-logs {
   height: 100%;
   display: flex;
   flex-direction: column;
 }
 
-.logs-header {
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border-color);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.logs-header h3 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 500;
-}
-
-.header-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.logs-body {
+.log-card {
   flex: 1;
-  overflow-y: auto;
-  padding: 16px;
-}
-
-.logs-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-}
-
-.log-item {
-  background-color: white;
-  border-radius: 6px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
-  padding: 12px;
 }
 
 .log-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
 }
 
-.log-type {
-  font-size: 12px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-weight: 500;
+.log-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
 }
 
-.type-search {
-  background-color: #e6f7ff;
-  color: #1890ff;
+.log-container {
+  flex: 1;
+  height: 100%;
+  overflow-y: auto;
+  font-family: monospace;
+  font-size: 0.9em;
 }
 
-.type-move {
-  background-color: #f6ffed;
-  color: #52c41a;
+.no-logs {
+  padding: 1rem;
+  text-align: center;
+  color: var(--el-text-color-secondary);
 }
 
-.type-rename {
-  background-color: #fff7e6;
-  color: #fa8c16;
+.log-item {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--el-border-color-light);
+  cursor: pointer;
 }
 
-.type-other {
-  background-color: #f9f0ff;
-  color: #722ed1;
+.log-item:hover {
+  background-color: var(--el-fill-color-light);
+}
+
+.log-item.expanded {
+  background-color: var(--el-fill-color);
+}
+
+.log-header-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .log-time {
-  font-size: 12px;
-  color: var(--text-light);
+  color: var(--el-text-color-secondary);
+  white-space: nowrap;
+}
+
+.log-category {
+  background-color: var(--el-color-info-light);
+  color: var(--el-color-info);
+  padding: 0 4px;
+  border-radius: 4px;
+  font-size: 0.8em;
+  white-space: nowrap;
 }
 
 .log-message {
-  font-size: 14px;
-  margin-bottom: 8px;
+  word-break: break-all;
 }
 
 .log-details {
-  font-size: 13px;
-  color: var(--text-light);
-}
-
-.log-details pre {
+  margin-top: 4px;
+  padding: 8px;
+  background-color: var(--el-fill-color-darker);
+  border-radius: 4px;
   white-space: pre-wrap;
   word-break: break-all;
-  margin: 0;
-  font-family: monospace;
 }
-</style> 
+
+.log-extra-details {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--el-border-color);
+}
+
+.log-item.info .log-message {
+  color: var(--el-text-color-primary);
+}
+
+.log-item.success .log-message {
+  color: var(--el-color-success);
+}
+
+.log-item.warning .log-message {
+  color: var(--el-color-warning);
+}
+
+.log-item.error .log-message {
+  color: var(--el-color-danger);
+}
+</style>`

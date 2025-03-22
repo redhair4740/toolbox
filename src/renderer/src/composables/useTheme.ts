@@ -1,115 +1,134 @@
-import { ref, watch, onMounted, nextTick } from 'vue'
-import { useSettings } from './useSettings'
+import { ref, watch } from 'vue'
 
-type ThemeType = 'light' | 'dark' | 'system'
+// 主题类型
+type ThemeMode = 'light' | 'dark' | 'system'
 
-/**
- * 主题管理组合式API
- * @returns 主题相关方法和状态
- */
+// 创建一个全局的主题状态
+const currentTheme = ref<ThemeMode>('system')
+const appliedTheme = ref<'light' | 'dark'>('light')
+
 export function useTheme() {
-  const { settings } = useSettings()
-  const currentTheme = ref<ThemeType>('light')
-  
-  // 应用主题到文档
-  const applyTheme = async (theme: ThemeType) => {
-    // 保存当前主题
-    currentTheme.value = theme
-    
-    // 如果是系统主题，则检测系统偏好
-    if (theme === 'system') {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-      document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light')
-    } else {
-      // 直接设置指定主题
-      document.documentElement.setAttribute('data-theme', theme)
+  // 初始化主题
+  const initTheme = () => {
+    // 从本地存储加载主题设置
+    const savedTheme = localStorage.getItem('theme_mode') as ThemeMode
+    if (savedTheme) {
+      currentTheme.value = savedTheme
     }
-    
-    // 等待下一个DOM更新周期，确保样式已应用
-    await nextTick()
-    
-    // 强制重新计算样式
-    document.body.style.display = 'none'
-    // 触发重排
-    void document.body.offsetHeight
-    document.body.style.display = ''
-    
-    // 强制刷新所有Element Plus组件
-    const styleSheets = document.styleSheets
-    for (let i = 0; i < styleSheets.length; i++) {
-      try {
-        // 尝试访问规则以触发样式重新计算
-        const rules = styleSheets[i].cssRules
-        void rules.length
-      } catch (e) {
-        // 忽略跨域错误
-      }
-    }
-    
-    // 触发自定义事件，通知应用主题已更改
-    document.dispatchEvent(new CustomEvent('theme-changed', { detail: { theme } }))
-  }
-  
-  // 监听系统主题变化
-  const setupSystemThemeListener = () => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-    
-    // 当系统主题变化时更新
-    const handleChange = () => {
+
+    // 应用主题
+    applyTheme()
+
+    // 监听系统主题变化
+    if (window.matchMedia) {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+      
+      // 初始检查
       if (currentTheme.value === 'system') {
-        document.documentElement.setAttribute(
-          'data-theme', 
-          mediaQuery.matches ? 'dark' : 'light'
-        )
-        
-        // 触发自定义事件，通知应用主题已更改
-        document.dispatchEvent(
-          new CustomEvent('theme-changed', { 
-            detail: { theme: mediaQuery.matches ? 'dark' : 'light' } 
-          })
-        )
+        appliedTheme.value = mediaQuery.matches ? 'dark' : 'light'
       }
+      
+      // 添加监听器
+      mediaQuery.addEventListener('change', event => {
+        if (currentTheme.value === 'system') {
+          appliedTheme.value = event.matches ? 'dark' : 'light'
+          document.documentElement.setAttribute('data-theme', appliedTheme.value)
+        }
+      })
     }
-    
-    // 添加监听器
-    if (mediaQuery.addEventListener) {
-      mediaQuery.addEventListener('change', handleChange)
-    } else {
-      // 兼容旧版浏览器
-      mediaQuery.addListener(handleChange)
-    }
-    
-    // 返回清理函数
-    return () => {
-      if (mediaQuery.removeEventListener) {
-        mediaQuery.removeEventListener('change', handleChange)
-      } else {
-        mediaQuery.removeListener(handleChange)
-      }
+  }
+
+  // 设置主题
+  const setTheme = (theme: ThemeMode) => {
+    if (theme !== currentTheme.value) {
+      currentTheme.value = theme
+      localStorage.setItem('theme_mode', theme)
+      applyTheme()
     }
   }
   
-  // 监听设置中的主题变化
-  watch(() => settings.ui.theme, (newTheme) => {
-    applyTheme(newTheme as ThemeType)
+  // 更新主题 - 适配设置组件
+  const updateTheme = (theme: string) => {
+    if (theme === 'light' || theme === 'dark' || theme === 'system') {
+      // 更新当前主题
+      currentTheme.value = theme as ThemeMode
+      // 存储到localStorage
+      localStorage.setItem('theme_mode', theme)
+      // 应用主题
+      applyTheme()
+    }
+  }
+
+  // 应用主题
+  const applyTheme = () => {
+    let theme: 'light' | 'dark'
+
+    if (currentTheme.value === 'system') {
+      // 检测系统主题
+      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        theme = 'dark'
+      } else {
+        theme = 'light'
+      }
+    } else {
+      theme = currentTheme.value
+    }
+
+    // 更新应用的主题
+    appliedTheme.value = theme
+
+    // 设置文档根元素的主题属性
+    document.documentElement.setAttribute('data-theme', theme)
+
+    // 更新 Element Plus 主题
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+  }
+
+  // 切换主题
+  const toggleTheme = () => {
+    if (currentTheme.value === 'light') {
+      setTheme('dark')
+    } else if (currentTheme.value === 'dark') {
+      setTheme('system')
+    } else {
+      setTheme('light')
+    }
+  }
+
+  // 检查是否是暗色主题
+  const isDarkTheme = () => {
+    return appliedTheme.value === 'dark'
+  }
+
+  // 获取主题名称
+  const getThemeName = () => {
+    const names = {
+      light: '浅色',
+      dark: '深色',
+      system: '跟随系统'
+    }
+    return names[currentTheme.value]
+  }
+
+  // 监听主题变化
+  watch(currentTheme, () => {
+    applyTheme()
   })
-  
-  // 监听设置保存事件
-  onMounted(() => {
-    // 应用初始主题
-    applyTheme(settings.ui.theme as ThemeType)
-    
-    // 设置系统主题监听
-    setupSystemThemeListener()
-    
-    // 监听设置保存事件
-    document.addEventListener('settings-saved', () => {
-      applyTheme(settings.ui.theme as ThemeType)
-    })
-  })
-  
+
+  // 初始化
+  initTheme()
+
   return {
     currentTheme,
-    applyTheme
+    appliedTheme,
+    setTheme,
+    updateTheme,
+    toggleTheme,
+    isDarkTheme,
+    getThemeName
   }
-} 
+}

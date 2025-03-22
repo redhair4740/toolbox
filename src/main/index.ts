@@ -3,6 +3,15 @@ import { electronApp, optimizer } from '@electron-toolkit/utils'
 import { setupWindow } from './window'
 import { setupIpcHandlers } from './ipc-handlers'
 
+// 捕获未处理的错误
+process.on('uncaughtException', (error) => {
+  console.error('未捕获的异常：', error)
+})
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('未处理的拒绝：', promise, '原因：', reason)
+})
+
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.

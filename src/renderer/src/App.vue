@@ -70,7 +70,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { HomeFilled, FolderOpened, Edit, Search, Setting, ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
 import FileMove from './components/FileMove.vue'
 import FileRename from './components/FileRename.vue'
@@ -81,7 +81,7 @@ import { useTheme } from './composables/useTheme'
 import { useSettings } from './composables/useSettings'
 
 // 初始化主题
-useTheme()
+const { updateTheme } = useTheme()
 
 // 获取设置
 const { settings } = useSettings()
@@ -89,8 +89,18 @@ const { settings } = useSettings()
 const activeTab = ref('home')
 const isSidebarCollapsed = ref(false)
 
+// 防止在切换到设置页面时重置设置
+let settingsComponentInitialized = false
+
 // 在组件挂载时应用侧边栏折叠状态设置
 onMounted(() => {
+  // 检查settings.ui是否存在，如果不存在则初始化
+  if (!settings.ui) {
+    settings.ui = { sidebarCollapsed: false }
+  } else if (settings.ui.sidebarCollapsed === undefined) {
+    settings.ui.sidebarCollapsed = false
+  }
+  
   isSidebarCollapsed.value = settings.ui.sidebarCollapsed
 })
 
@@ -99,6 +109,20 @@ document.addEventListener('settings-saved', (event) => {
   const savedSettings = (event as CustomEvent).detail
   if (savedSettings && savedSettings.ui) {
     isSidebarCollapsed.value = savedSettings.ui.sidebarCollapsed
+  }
+})
+
+// 监听设置中主题的变化
+watch(() => settings.general.theme, (newTheme) => {
+  if (newTheme) updateTheme(newTheme)
+}, { immediate: true })
+
+// 监听标签页变化
+watch(activeTab, (newTab) => {
+  if (newTab === 'settings') {
+    if (!settingsComponentInitialized) {
+      settingsComponentInitialized = true
+    }
   }
 })
 
@@ -121,8 +145,14 @@ const getPageTitle = () => {
 
 const toggleSidebar = () => {
   isSidebarCollapsed.value = !isSidebarCollapsed.value
-  // 更新设置中的侧边栏状态
-  settings.ui.sidebarCollapsed = isSidebarCollapsed.value
+  
+  // 确保settings.ui对象存在
+  if (!settings.ui) {
+    settings.ui = { sidebarCollapsed: isSidebarCollapsed.value }
+  } else {
+    // 更新设置中的侧边栏状态
+    settings.ui.sidebarCollapsed = isSidebarCollapsed.value
+  }
 }
 </script>
 

@@ -1,13 +1,13 @@
-<template>
-  <div class="file-move">
+`<template>
+  <div class="file-batch-operations">
     <el-card>
       <template #header>
         <div class="card-header">
-          <h2>文件移动与复制</h2>
+          <h2>批量文件操作</h2>
         </div>
       </template>
 
-      <div class="move-form">
+      <div class="operation-form">
         <!-- 操作类型选择 -->
         <el-form :model="formData" label-width="100px">
           <el-form-item label="操作类型">
@@ -18,12 +18,37 @@
           </el-form-item>
 
           <!-- 源路径选择 -->
-          <el-form-item label="源文件/文件夹">
+          <el-form-item label="源路径">
             <path-selector
               v-model="formData.sourcePath"
-              placeholder="选择源文件或文件夹"
-              @select="handleSourceSelect"
+              placeholder="选择源文件夹"
+              directory-only
+              @select="loadSourceFiles"
             />
+          </el-form-item>
+
+          <!-- 文件筛选 -->
+          <el-form-item label="文件筛选">
+            <div class="filter-options">
+              <el-input
+                v-model="formData.filePattern"
+                placeholder="文件名模式 (例如: *.jpg)"
+                clearable
+              >
+                <template #append>
+                  <el-button @click="applyFilter">应用</el-button>
+                </template>
+              </el-input>
+
+              <div class="filter-checkboxes">
+                <el-checkbox v-model="formData.includeSubdirectories">
+                  包含子目录
+                </el-checkbox>
+                <el-checkbox v-model="formData.useRegex">
+                  使用正则表达式
+                </el-checkbox>
+              </div>
+            </div>
           </el-form-item>
 
           <!-- 目标路径选择 -->
@@ -32,7 +57,6 @@
               v-model="formData.targetPath"
               placeholder="选择目标文件夹"
               directory-only
-              @select="handleTargetSelect"
             />
           </el-form-item>
 
@@ -49,18 +73,20 @@
                   </el-select>
                 </el-form-item>
                 
-                <el-form-item label="保留结构">
-                  <el-switch v-model="formData.preserveStructure" />
+                <el-form-item label="并行处理">
+                  <el-switch v-model="formData.parallel" />
                   <span class="option-hint">
-                    (保留源文件夹的目录结构)
+                    (可提高速度，但可能增加系统负载)
                   </span>
                 </el-form-item>
                 
-                <el-form-item label="覆盖确认">
-                  <el-switch v-model="formData.overwriteConfirm" />
-                  <span class="option-hint">
-                    (覆盖前进行确认)
-                  </span>
+                <el-form-item label="最大并行数">
+                  <el-input-number
+                    v-model="formData.maxParallel"
+                    :min="1"
+                    :max="16"
+                    :disabled="!formData.parallel"
+                  />
                 </el-form-item>
               </el-collapse-item>
             </el-collapse>
@@ -71,7 +97,7 @@
             <el-button
               type="primary"
               :disabled="!isFormValid || isProcessing"
-              @click="executeOperation"
+              @click="startOperation"
             >
               {{ operationButtonText }}
             </el-button>
@@ -85,44 +111,47 @@
         </el-form>
       </div>
 
-      <!-- 文件信息 -->
-      <div v-if="fileInfo" class="file-info-section">
-        <h3>文件信息</h3>
-        <div class="info-grid">
-          <div class="info-item">
-            <div class="info-label">类型:</div>
-            <div class="info-value">{{ fileInfo.isDirectory ? '文件夹' : '文件' }}</div>
-          </div>
-          <div class="info-item">
-            <div class="info-label">名称:</div>
-            <div class="info-value">{{ fileInfo.name }}</div>
-          </div>
-          <div class="info-item">
-            <div class="info-label">路径:</div>
-            <div class="info-value">{{ fileInfo.path }}</div>
-          </div>
-          <div v-if="!fileInfo.isDirectory" class="info-item">
-            <div class="info-label">大小:</div>
-            <div class="info-value">{{ formatFileSize(fileInfo.size) }}</div>
-          </div>
-          <div v-if="fileInfo.isDirectory" class="info-item">
-            <div class="info-label">包含:</div>
-            <div class="info-value">{{ fileInfo.items }} 个项目</div>
-          </div>
-          <div v-if="fileInfo.isDirectory" class="info-item">
-            <div class="info-label">总大小:</div>
-            <div class="info-value">{{ formatFileSize(fileInfo.totalSize) }}</div>
+      <!-- 文件列表预览 -->
+      <div v-if="sourceFiles.length > 0" class="file-list-preview">
+        <div class="file-list-header">
+          <h3>文件列表预览 ({{ sourceFiles.length }}个文件)</h3>
+          <div class="file-list-actions">
+            <el-input
+              v-model="fileSearchQuery"
+              placeholder="搜索文件"
+              clearable
+              style="width: 200px"
+            />
           </div>
         </div>
-      </div>
-
-      <!-- 目标路径预览 -->
-      <div v-if="targetPreview" class="target-preview">
-        <h3>目标路径预览</h3>
-        <div class="preview-path">
-          <el-icon><FolderOpened /></el-icon>
-          <span>{{ targetPreview }}</span>
-        </div>
+        
+        <el-table
+          :data="filteredFiles"
+          height="250"
+          style="width: 100%"
+          :row-class-name="getRowClassName"
+        >
+          <el-table-column
+            type="selection"
+            width="55"
+          />
+          <el-table-column
+            prop="name"
+            label="文件名"
+            min-width="200"
+          />
+          <el-table-column
+            prop="relativePath"
+            label="相对路径"
+            min-width="300"
+          />
+          <el-table-column
+            prop="size"
+            label="大小"
+            width="120"
+            :formatter="formatFileSize"
+          />
+        </el-table>
       </div>
 
       <!-- 操作进度和日志 -->
@@ -143,40 +172,49 @@
 <script setup lang="ts">
 import { ref, computed, reactive } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { FolderOpened } from '@element-plus/icons-vue'
 import PathSelector from './common/PathSelector.vue'
 import FileOperationProgress from './common/FileOperationProgress.vue'
 import { useRecentPaths } from '../composables/useRecentPaths'
-import path from 'path'
 
 // 文件服务接口
-const api = window.api
+const fileService = window.electron.fileService
 
 // 表单数据
 const formData = reactive({
   operationType: 'move',
   sourcePath: '',
   targetPath: '',
+  filePattern: '',
+  includeSubdirectories: true,
+  useRegex: false,
   conflictStrategy: 'ask',
-  preserveStructure: true,
-  overwriteConfirm: true
+  parallel: true,
+  maxParallel: 4
 })
 
 // 最近路径
 const { addRecentPath } = useRecentPaths()
 
-// 文件信息
-const fileInfo = ref<{
+// 源文件列表
+const sourceFiles = ref<Array<{
   name: string
   path: string
+  relativePath: string
+  size: number
   isDirectory: boolean
-  size?: number
-  items?: number
-  totalSize?: number
-} | null>(null)
+}>>([])
 
-// 目标路径预览
-const targetPreview = ref<string | null>(null)
+// 文件搜索
+const fileSearchQuery = ref('')
+const filteredFiles = computed(() => {
+  if (!fileSearchQuery.value) return sourceFiles.value
+  
+  const query = fileSearchQuery.value.toLowerCase()
+  return sourceFiles.value.filter(file => 
+    file.name.toLowerCase().includes(query) || 
+    file.relativePath.toLowerCase().includes(query)
+  )
+})
 
 // 处理状态
 const isProcessing = ref(false)
@@ -191,7 +229,7 @@ const progressComponent = ref<InstanceType<typeof FileOperationProgress> | null>
 
 // 计算属性
 const isFormValid = computed(() => {
-  return formData.sourcePath && formData.targetPath
+  return formData.sourcePath && formData.targetPath && sourceFiles.value.length > 0
 })
 
 const operationButtonText = computed(() => {
@@ -202,81 +240,55 @@ const progressTitle = computed(() => {
   return formData.operationType === 'move' ? '文件移动进度' : '文件复制进度'
 })
 
-// 源路径选择处理
-const handleSourceSelect = async (sourcePath: string) => {
-  if (!sourcePath) return
+// 加载源文件
+const loadSourceFiles = async () => {
+  if (!formData.sourcePath) return
   
   try {
+    addLog('正在扫描文件...', 'info')
+    
     // 保存到最近路径
-    addRecentPath(sourcePath)
+    addRecentPath(formData.sourcePath)
     
-    // 获取文件信息
-    addLog(`正在获取源文件信息...`, 'info')
-    const info = await api.getFileInfo(sourcePath)
+    const files = await fileService.listFiles({
+      directory: formData.sourcePath,
+      recursive: formData.includeSubdirectories,
+      pattern: formData.filePattern || undefined,
+      useRegex: formData.useRegex
+    })
     
-    fileInfo.value = {
-      name: info.name,
-      path: info.path,
-      isDirectory: info.isDirectory,
-      size: info.size,
-      items: info.items,
-      totalSize: info.totalSize
-    }
+    sourceFiles.value = files.map(file => ({
+      name: file.name,
+      path: file.path,
+      relativePath: file.relativePath,
+      size: file.size,
+      isDirectory: file.isDirectory
+    }))
     
-    addLog(`成功获取源文件信息`, 'success')
-    
-    // 更新目标路径预览
-    updateTargetPreview()
+    addLog(`找到 ${sourceFiles.value.length} 个文件`, 'success')
   } catch (error) {
-    addLog(`获取文件信息失败: ${error.message}`, 'error')
-    ElMessage.error('获取文件信息失败')
+    addLog(`扫描文件失败: ${error.message}`, 'error')
+    ElMessage.error('扫描文件失败')
   }
 }
 
-// 目标路径选择处理
-const handleTargetSelect = (targetPath: string) => {
-  if (targetPath) {
-    addRecentPath(targetPath)
-    updateTargetPreview()
-  }
+// 应用筛选
+const applyFilter = () => {
+  loadSourceFiles()
 }
 
-// 更新目标路径预览
-const updateTargetPreview = () => {
-  if (!formData.sourcePath || !formData.targetPath || !fileInfo.value) {
-    targetPreview.value = null
-    return
-  }
-  
-  const sourceName = fileInfo.value.name
-  targetPreview.value = path.join(formData.targetPath, sourceName)
-}
-
-// 执行操作
-const executeOperation = async () => {
+// 开始操作
+const startOperation = async () => {
   if (!isFormValid.value) return
   
   try {
-    // 检查源路径和目标路径
-    if (formData.sourcePath === formData.targetPath) {
-      ElMessage.warning('源路径和目标路径不能相同')
-      return
-    }
-    
-    // 检查是否是移动到自身的子目录
-    if (formData.operationType === 'move' && 
-        fileInfo.value?.isDirectory && 
-        formData.targetPath.startsWith(formData.sourcePath)) {
-      ElMessage.error('不能将文件夹移动到其自身的子目录中')
-      return
-    }
+    // 保存到最近路径
+    addRecentPath(formData.targetPath)
     
     // 确认操作
     const operationName = formData.operationType === 'move' ? '移动' : '复制'
-    const sourceName = fileInfo.value?.name || path.basename(formData.sourcePath)
-    
     const confirmResult = await ElMessageBox.confirm(
-      `确定要${operationName} "${sourceName}" 到 "${formData.targetPath}" 吗？`,
+      `确定要${operationName} ${sourceFiles.value.length} 个文件到目标路径吗？`,
       '确认操作',
       {
         confirmButtonText: '确定',
@@ -290,18 +302,18 @@ const executeOperation = async () => {
     // 开始处理
     isProcessing.value = true
     progress.current = 0
-    progress.total = 1
-    progress.currentFile = sourceName
+    progress.total = sourceFiles.value.length
+    progress.currentFile = ''
     
-    addLog(`开始${operationName}文件`, 'info')
+    addLog(`开始${operationName}文件，共 ${sourceFiles.value.length} 个`, 'info')
     
-    // 构建操作配置
+    // 调用文件服务
     const operationConfig = {
-      sourcePath: formData.sourcePath,
-      targetPath: formData.targetPath,
+      files: sourceFiles.value.map(file => file.path),
+      targetDirectory: formData.targetPath,
       conflictStrategy: formData.conflictStrategy,
-      preserveStructure: formData.preserveStructure,
-      overwriteConfirm: formData.overwriteConfirm
+      parallel: formData.parallel,
+      maxParallel: formData.maxParallel
     }
     
     // 设置进度回调
@@ -313,17 +325,17 @@ const executeOperation = async () => {
     
     // 执行操作
     if (formData.operationType === 'move') {
-      await api.moveFile(operationConfig, progressCallback)
+      await fileService.moveFiles(operationConfig, progressCallback)
     } else {
-      await api.copyFile(operationConfig, progressCallback)
+      await fileService.copyFiles(operationConfig, progressCallback)
     }
     
     // 完成
     addLog(`文件${operationName}完成`, 'success')
     ElMessage.success(`文件${operationName}完成`)
     
-    // 重置表单
-    resetForm()
+    // 重新加载源文件列表
+    loadSourceFiles()
   } catch (error) {
     addLog(`操作失败: ${error.message}`, 'error')
     ElMessage.error(`操作失败: ${error.message}`)
@@ -335,7 +347,7 @@ const executeOperation = async () => {
 // 取消操作
 const cancelOperation = async () => {
   try {
-    await api.cancelOperation()
+    await fileService.cancelOperation()
     addLog('操作已取消', 'warning')
     ElMessage.warning('操作已取消')
   } catch (error) {
@@ -351,13 +363,15 @@ const resetForm = () => {
     operationType: 'move',
     sourcePath: '',
     targetPath: '',
+    filePattern: '',
+    includeSubdirectories: true,
+    useRegex: false,
     conflictStrategy: 'ask',
-    preserveStructure: true,
-    overwriteConfirm: true
+    parallel: true,
+    maxParallel: 4
   })
-  
-  fileInfo.value = null
-  targetPreview.value = null
+  sourceFiles.value = []
+  fileSearchQuery.value = ''
   
   if (progressComponent.value) {
     progressComponent.value.clearLogs()
@@ -372,18 +386,22 @@ const addLog = (message: string, type: 'info' | 'success' | 'warning' | 'error' 
 }
 
 // 格式化文件大小
-const formatFileSize = (size?: number) => {
-  if (size === undefined) return 'N/A'
-  
+const formatFileSize = (row: { size: number }) => {
+  const size = row.size
   if (size < 1024) return `${size} B`
   if (size < 1024 * 1024) return `${(size / 1024).toFixed(2)} KB`
   if (size < 1024 * 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(2)} MB`
   return `${(size / (1024 * 1024 * 1024)).toFixed(2)} GB`
 }
+
+// 获取行样式
+const getRowClassName = ({ row }: { row: { isDirectory: boolean } }) => {
+  return row.isDirectory ? 'directory-row' : ''
+}
 </script>
 
 <style scoped>
-.file-move {
+.file-batch-operations {
   padding: 1rem;
 }
 
@@ -393,8 +411,19 @@ const formatFileSize = (size?: number) => {
   align-items: center;
 }
 
-.move-form {
+.operation-form {
   margin-bottom: 1.5rem;
+}
+
+.filter-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.filter-checkboxes {
+  display: flex;
+  gap: 1rem;
 }
 
 .option-hint {
@@ -403,41 +432,26 @@ const formatFileSize = (size?: number) => {
   font-size: 0.9em;
 }
 
-.file-info-section,
-.target-preview {
+.file-list-preview {
   margin: 1rem 0;
   border: 1px solid var(--el-border-color);
   border-radius: 4px;
   padding: 1rem;
 }
 
-.info-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 0.75rem;
-}
-
-.info-item {
+.file-list-header {
   display: flex;
-  gap: 0.5rem;
-}
-
-.info-label {
-  font-weight: bold;
-  color: var(--el-text-color-secondary);
-}
-
-.info-value {
-  word-break: break-all;
-}
-
-.preview-path {
-  display: flex;
+  justify-content: space-between;
   align-items: center;
+  margin-bottom: 1rem;
+}
+
+.file-list-actions {
+  display: flex;
   gap: 0.5rem;
-  padding: 0.5rem;
+}
+
+:deep(.directory-row) {
   background-color: var(--el-fill-color-light);
-  border-radius: 4px;
-  word-break: break-all;
 }
 </style>`
