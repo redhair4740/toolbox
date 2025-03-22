@@ -118,6 +118,41 @@ const api = {
   // 文件操作
   getFileInfo: (filePath: string) => 
     ipcRenderer.invoke('file:stats', filePath),
+  getFileList: (dirPath: string, options: { 
+    recursive?: boolean, 
+    fileTypeFilter?: string[], 
+    includeDirectories?: boolean 
+  }) => {
+    // 简单的参数验证
+    if (!dirPath || typeof dirPath !== 'string') {
+      return Promise.reject(new Error('无效的目录路径'));
+    }
+    
+    // 准备扩展名模式
+    let pattern: string | undefined = undefined;
+    if (options.fileTypeFilter && Array.isArray(options.fileTypeFilter) && options.fileTypeFilter.length > 0) {
+      try {
+        // 将扩展名数组转换为通配符模式
+        const extensionPatterns = options.fileTypeFilter
+          .filter(ext => typeof ext === 'string' && ext.trim())
+          .map(ext => `*.${ext.trim().replace(/^\./, '')}`);
+        
+        if (extensionPatterns.length > 0) {
+          pattern = extensionPatterns.join('|');
+        }
+      } catch (err) {
+        console.error('处理文件扩展名失败:', err);
+      }
+    }
+    
+    // 发送到主进程
+    return ipcRenderer.invoke('file:list', { 
+      directory: dirPath, 
+      recursive: options.recursive,
+      pattern: pattern,
+      includeDirectories: options.includeDirectories
+    });
+  },
   copyFile: (options: FileOperationOptions, callback?: ProgressListener) => {
     if (callback) {
       listeners.moveProgress.add(callback)

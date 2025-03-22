@@ -1,4 +1,4 @@
-`<template>
+<template>
   <div class="file-operation-progress">
     <div class="progress-header">
       <div class="operation-info">
@@ -34,7 +34,8 @@
       </div>
     </div>
     
-    <div class="progress-content">
+    <!-- 进度内容，根据showProgress显示或隐藏 -->
+    <div v-if="showProgress" class="progress-content">
       <ProgressBar
         :current="current"
         :total="total"
@@ -74,6 +75,26 @@
       </div>
     </div>
     
+    <div v-if="logs.length > 0" class="log-section">
+      <el-collapse>
+        <el-collapse-item title="操作日志" name="logs">
+          <el-scrollbar height="150px">
+            <div class="log-list">
+              <div v-for="(log, index) in logs" :key="index" class="log-item" :class="log.type">
+                <el-icon>
+                  <InfoFilled v-if="log.type === 'info'" />
+                  <SuccessFilled v-else-if="log.type === 'success'" />
+                  <WarningFilled v-else-if="log.type === 'warning'" />
+                  <CircleCloseFilled v-else-if="log.type === 'error'" />
+                </el-icon>
+                <span>{{ log.time }} - {{ log.message }}</span>
+              </div>
+            </div>
+          </el-scrollbar>
+        </el-collapse-item>
+      </el-collapse>
+    </div>
+    
     <div v-if="showErrors && errors.length > 0" class="error-section">
       <el-collapse>
         <el-collapse-item title="错误详情" name="errors">
@@ -103,12 +124,25 @@ import {
   Upload,
   Download,
   CopyDocument,
-  RefreshRight
+  RefreshRight,
+  InfoFilled,
+  SuccessFilled,
+  CircleCloseFilled
 } from '@element-plus/icons-vue'
 import ProgressBar from './ProgressBar.vue'
 
 // 操作类型
 type OperationType = 'search' | 'rename' | 'move' | 'delete' | 'copy' | 'upload' | 'download' | 'batch' | 'other'
+
+// 日志类型
+type LogType = 'info' | 'success' | 'warning' | 'error'
+
+// 日志项
+interface LogItem {
+  message: string
+  type: LogType
+  time: string
+}
 
 const props = defineProps({
   title: {
@@ -122,6 +156,10 @@ const props = defineProps({
   operationType: {
     type: String as () => OperationType,
     default: 'other'
+  },
+  showProgress: {
+    type: Boolean,
+    default: false
   },
   current: {
     type: Number,
@@ -182,6 +220,42 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['cancel', 'pause', 'resume'])
+
+// 添加日志数组
+const logs = ref<LogItem[]>([])
+
+// 添加日志方法
+const addLog = (message: string, type: LogType = 'info') => {
+  const time = new Date().toLocaleTimeString()
+  logs.value.push({ message, type, time })
+  
+  // 根据日志类型同步输出到控制台
+  switch (type) {
+    case 'info':
+      console.info(`[${props.title}] ${message}`)
+      break
+    case 'success':
+      console.log(`[${props.title}] ${message}`)
+      break
+    case 'warning':
+      console.warn(`[${props.title}] ${message}`)
+      break
+    case 'error':
+      console.error(`[${props.title}] ${message}`)
+      break
+  }
+}
+
+// 清除日志
+const clearLogs = () => {
+  logs.value = []
+}
+
+// 暴露方法给父组件
+defineExpose({
+  addLog,
+  clearLogs
+})
 
 // 操作图标
 const operationIcon = computed(() => {
@@ -361,6 +435,41 @@ watch(() => props.isRunning, (newVal) => {
   color: var(--el-color-warning);
 }
 
+/* 日志部分样式 */
+.log-section {
+  margin-top: 0.5rem;
+}
+
+.log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.log-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9em;
+  padding: 4px 0;
+}
+
+.log-item.info {
+  color: var(--el-text-color-regular);
+}
+
+.log-item.success {
+  color: var(--el-color-success);
+}
+
+.log-item.warning {
+  color: var(--el-color-warning);
+}
+
+.log-item.error {
+  color: var(--el-color-danger);
+}
+
 .error-section {
   margin-top: 0.5rem;
 }
@@ -378,4 +487,4 @@ watch(() => props.isRunning, (newVal) => {
   color: var(--el-color-danger);
   font-size: 0.9em;
 }
-</style>`
+</style>

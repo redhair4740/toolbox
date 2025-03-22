@@ -59,6 +59,13 @@
                   </span>
                 </el-form-item>
                 
+                <el-form-item label="搜索子目录">
+                  <el-switch v-model="formData.includeSubdirectories" />
+                  <span class="option-hint">
+                    (包含子目录中的文件)
+                  </span>
+                </el-form-item>
+                
                 <el-form-item label="覆盖确认">
                   <el-switch v-model="formData.overwriteConfirm" />
                   <span class="option-hint">
@@ -192,7 +199,7 @@
         <span>正在加载文件列表...</span>
       </div>
       <div v-else-if="fileList.length === 0" class="file-list-empty">
-        <el-empty description="没有找到文件" />
+        <el-empty description="没有找到符合条件的文件" />
       </div>
       <div v-else class="file-list-container">
         <div class="file-list-header">
@@ -245,10 +252,51 @@ import PathSelector from './common/PathSelector.vue'
 import FileOperationProgress from './common/FileOperationProgress.vue'
 import { useRecentPaths } from '../composables/useRecentPaths'
 import { useFileTypes } from '../composables/useFileTypes'
-import path from 'path'
 
 // 文件服务接口
 const api = window.api
+
+// 路径处理工具函数
+const pathUtils = {
+  basename(filepath: string): string {
+    // 简单实现：获取路径最后一部分
+    return filepath.split(/[\\/]/).pop() || filepath;
+  },
+  
+  dirname(filepath: string): string {
+    // 获取目录路径
+    const parts = filepath.split(/[\\/]/);
+    parts.pop();
+    return parts.join('/') || '.';
+  },
+  
+  join(...paths: string[]): string {
+    // 简单的路径拼接
+    return paths.filter(Boolean).join('/').replace(/\/+/g, '/');
+  }
+};
+
+// 日期格式化工具函数
+const formatDate = (dateString: string): string => {
+  try {
+    const date = new Date(dateString);
+    // 检查日期是否有效
+    if (isNaN(date.getTime())) {
+      return dateString;
+    }
+    
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  } catch (e) {
+    return dateString;
+  }
+};
 
 // 使用最近路径记录
 const { addRecentPath } = useRecentPaths()
@@ -259,6 +307,28 @@ const {
   getFileTypesByCategory
 } = useFileTypes()
 
+// 获取文件类型扩展名数组
+const getFileExtensions = (typeIds: string[]) => {
+  if (!typeIds || !typeIds.length) return undefined
+  
+  const extensions: string[] = []
+  // 遍历所有文件类型分类
+  for (const category of fileCategories.value) {
+    // 获取该分类下所有文件类型
+    const typesInCategory = getFileTypesByCategory(category)
+    // 找出被选中的文件类型
+    const selectedTypes = typesInCategory.filter(type => typeIds.includes(type.id))
+    // 添加这些类型的所有扩展名
+    for (const type of selectedTypes) {
+      if (type.extensions) {
+        extensions.push(...type.extensions)
+      }
+    }
+  }
+  
+  return extensions.length > 0 ? extensions : undefined
+}
+
 // 表单数据
 const formData = reactive({
   operationType: 'move',
@@ -267,6 +337,7 @@ const formData = reactive({
   conflictStrategy: 'ask',
   preserveStructure: true,
   overwriteConfirm: true,
+  includeSubdirectories: true,  // 默认包含子目录
   fileTypeFilter: [] as string[] // 添加文件类型过滤
 })
 
@@ -337,25 +408,41 @@ const showFileList = async () => {
   
   try {
     // 获取完整的文件列表
-    const sourcePaths = Array.isArray(formData.sourcePath) 
-      ? formData.sourcePath.split(';') 
-      : [formData.sourcePath]
+    let sourcePaths: string[] = [];
+    if (typeof formData.sourcePath === 'string') {
+      // 支持多个路径，用分号分隔
+      if (formData.sourcePath.includes(';')) {
+        sourcePaths = formData.sourcePath.split(';').filter(p => p.trim());
+      } else {
+        sourcePaths = [formData.sourcePath];
+      }
+    } else if (Array.isArray(formData.sourcePath)) {
+      sourcePaths = formData.sourcePath;
+    }
     
+    if (sourcePaths.length === 0) {
+      throw new Error('未选择源路径');
+    }
+    
+    // 将文件类型ID转换为扩展名数组
+    const fileExtensions = getFileExtensions(formData.fileTypeFilter)
+    
+    // 获取文件列表，仅获取文件，不包括目录
     const results = await api.getFileList(sourcePaths[0], {
-      recursive: true,
-      fileTypeFilter: formData.fileTypeFilter,
-      includeDirectories: false
+      recursive: formData.includeSubdirectories,  // 是否包含子目录
+      fileTypeFilter: fileExtensions,
+      includeDirectories: false  // 仅获取文件，不包括目录
     })
     
     fileList.value = results.map(file => ({
-      name: path.basename(file.path),
+      name: pathUtils.basename(file.path),
       path: file.path,
-      directory: path.dirname(file.path),
+      directory: pathUtils.dirname(file.path),
       size: file.size,
-      modifiedTime: new Date(file.modifiedTime).toLocaleString()
+      modifiedTime: formatDate(file.modifiedTime)
     }))
     
-    addLog(`已加载 ${fileList.value.length} 个文件到明细列表`, 'info')
+    addLog(`已加载 ${fileList.value.length} 个符合条件的文件`, 'info')
   } catch (error) {
     addLog(`获取文件列表失败: ${error.message}`, 'error')
     ElMessage.error('获取文件列表失败')
@@ -389,6 +476,28 @@ const handleSourceSelect = async (sourcePath: string | string[]) => {
       }
       
       addLog(`成功获取源文件信息，选中了 ${sourcePath.length} 个项目`, 'success')
+    } else if (sourcePath.includes(';')) {
+      // 字符串形式的多选，用分号分隔
+      const paths = sourcePath.split(';').filter(p => p.trim());
+      paths.forEach(p => addRecentPath(p));
+      
+      if (paths.length > 0) {
+        // 获取第一个文件的信息作为参考
+        const firstPath = paths[0];
+        addLog(`正在获取源文件信息...`, 'info')
+        const info = await api.getFileInfo(firstPath)
+        
+        fileInfo.value = {
+          name: info.name,
+          path: info.path,
+          isDirectory: info.isDirectory,
+          size: info.size,
+          items: paths.length,
+          totalSize: info.totalSize
+        }
+        
+        addLog(`成功获取源文件信息，选中了 ${paths.length} 个项目`, 'success')
+      }
     } else {
       // 单选模式
       addRecentPath(sourcePath)
@@ -433,7 +542,7 @@ const updateTargetPreview = () => {
   }
   
   const sourceName = fileInfo.value.name
-  targetPreview.value = path.join(formData.targetPath, sourceName)
+  targetPreview.value = pathUtils.join(formData.targetPath, sourceName)
 }
 
 // 执行操作
@@ -447,80 +556,110 @@ const executeOperation = async () => {
       return
     }
     
-    // 检查是否是移动到自身的子目录
-    if (formData.operationType === 'move' && 
-        fileInfo.value?.isDirectory && 
-        formData.targetPath.startsWith(formData.sourcePath)) {
-      ElMessage.error('不能将文件夹移动到其自身的子目录中')
-      return
-    }
-    
-    // 确认操作
-    const operationName = formData.operationType === 'move' ? '移动' : '复制'
-    const sourceName = fileInfo.value?.name || path.basename(formData.sourcePath)
-    
-    // 检查是否选择了文件类型过滤器
-    let typeFilterMessage = '';
-    if (formData.fileTypeFilter && formData.fileTypeFilter.length > 0) {
-      const fileTypeNames = formData.fileTypeFilter.join(', ');
-      typeFilterMessage = `\n仅处理以下文件类型: ${fileTypeNames}`;
-    }
-    
-    const confirmResult = await ElMessageBox.confirm(
-      `确定要${operationName} "${sourceName}" 到 "${formData.targetPath}" 吗？${typeFilterMessage}`,
-      '确认操作',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
+    // 处理源路径，获取需要处理的源路径列表
+    let sourceDirs: string[] = [];
+    if (typeof formData.sourcePath === 'string') {
+      if (formData.sourcePath.includes(';')) {
+        sourceDirs = formData.sourcePath.split(';').filter(p => p.trim());
+      } else {
+        sourceDirs = [formData.sourcePath];
       }
-    ).catch(() => false)
-    
-    if (!confirmResult) return
-    
-    // 开始处理
-    isProcessing.value = true
-    progress.current = 0
-    progress.total = 1
-    progress.currentFile = sourceName
-    
-    addLog(`开始${operationName}文件`, 'info')
-    
-    // 构建操作配置
-    const operationConfig = {
-      sourcePath: formData.sourcePath,
-      targetPath: formData.targetPath,
-      conflictStrategy: formData.conflictStrategy,
-      preserveStructure: formData.preserveStructure,
-      overwriteConfirm: formData.overwriteConfirm,
-      fileTypeFilter: formData.fileTypeFilter
+    } else if (Array.isArray(formData.sourcePath)) {
+      sourceDirs = formData.sourcePath;
     }
     
-    // 设置进度回调
-    const progressCallback = (current: number, total: number, filePath: string) => {
-      progress.current = current
-      progress.total = total
-      progress.currentFile = filePath
+    if (sourceDirs.length === 0) {
+      throw new Error('未选择源路径');
     }
     
-    // 执行操作
-    if (formData.operationType === 'move') {
-      await api.moveFile(operationConfig, progressCallback)
-    } else {
-      await api.copyFile(operationConfig, progressCallback)
+    // 将文件类型ID转换为扩展名数组
+    const fileExtensions = getFileExtensions(formData.fileTypeFilter)
+    
+    // 确认操作前，先获取符合条件的文件列表
+    // 注意：这里不移动整个目录，而是获取符合条件的文件后单独处理
+    isLoadingFileList.value = true;
+    const operationName = formData.operationType === 'move' ? '移动' : '复制';
+    
+    try {
+      addLog(`正在查找符合条件的文件...`, 'info');
+      
+      // 从第一个源目录获取文件列表
+      const fileList = await api.getFileList(sourceDirs[0], {
+        recursive: formData.includeSubdirectories,
+        fileTypeFilter: fileExtensions,
+        includeDirectories: false // 仅获取文件，不包括目录
+      });
+      
+      if (fileList.length === 0) {
+        addLog(`未找到符合条件的文件`, 'warning');
+        ElMessage.warning('未找到符合条件的文件，操作已取消');
+        isLoadingFileList.value = false;
+        return;
+      }
+      
+      // 确认操作
+      const confirmResult = await ElMessageBox.confirm(
+        `确定要${operationName} ${fileList.length} 个文件到 "${formData.targetPath}" 吗？`,
+        '确认操作',
+        {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }
+      ).catch(() => false);
+      
+      if (!confirmResult) {
+        isLoadingFileList.value = false;
+        return;
+      }
+      
+      // 开始处理
+      isProcessing.value = true;
+      progress.current = 0;
+      progress.total = fileList.length;
+      progress.currentFile = '';
+      
+      addLog(`开始${operationName} ${fileList.length} 个文件`, 'info');
+      
+      // 构建操作配置 - 直接传递获取到的文件路径列表
+      const operationConfig = {
+        files: fileList.map(file => file.path), // 使用文件路径列表而不是目录
+        targetPath: formData.targetPath,
+        conflictStrategy: formData.conflictStrategy,
+        preserveStructure: formData.preserveStructure,
+        overwriteConfirm: formData.overwriteConfirm
+      };
+      
+      // 设置进度回调
+      const progressCallback = (current: number, total: number, filePath: string) => {
+        progress.current = current;
+        progress.total = total;
+        progress.currentFile = filePath;
+      };
+      
+      // 执行操作
+      if (formData.operationType === 'move') {
+        await api.moveFile(operationConfig, progressCallback);
+      } else {
+        await api.copyFile(operationConfig, progressCallback);
+      }
+      
+      // 完成
+      addLog(`文件${operationName}完成`, 'success');
+      ElMessage.success(`文件${operationName}完成`);
+      
+      // 重置表单
+      resetForm();
+    } catch (error) {
+      addLog(`操作失败: ${error.message}`, 'error');
+      ElMessage.error(`操作失败: ${error.message}`);
+    } finally {
+      isLoadingFileList.value = false;
+      isProcessing.value = false;
     }
-    
-    // 完成
-    addLog(`文件${operationName}完成`, 'success')
-    ElMessage.success(`文件${operationName}完成`)
-    
-    // 重置表单
-    resetForm()
   } catch (error) {
-    addLog(`操作失败: ${error.message}`, 'error')
-    ElMessage.error(`操作失败: ${error.message}`)
-  } finally {
-    isProcessing.value = false
+    addLog(`操作失败: ${error.message}`, 'error');
+    ElMessage.error(`操作失败: ${error.message}`);
   }
 }
 
@@ -546,6 +685,7 @@ const resetForm = () => {
     conflictStrategy: 'ask',
     preserveStructure: true,
     overwriteConfirm: true,
+    includeSubdirectories: true,
     fileTypeFilter: []
   })
   
