@@ -46,13 +46,7 @@
         </div>
       </div>
       
-      <!-- 调试信息提示 -->
-      <div class="debug-tip" v-if="!isSidebarCollapsed">
-        <el-tooltip content="使用 Ctrl+Shift+D 打开Chrome风格调试控制台" placement="right">
-          <el-icon><InfoFilled /></el-icon>
-          <span>调试控制台: Ctrl+Shift+D</span>
-        </el-tooltip>
-      </div>
+      <!-- 调试信息提示区域已移除，但保留快捷键功能 -->
 
       <div class="sidebar-toggle" @click="toggleSidebar">
         <el-icon v-if="isSidebarCollapsed"><ArrowRight /></el-icon>
@@ -309,27 +303,5 @@ body {
   padding: 15px;
   background-color: var(--bg-color);
   color: var(--text-color);
-}
-
-/* 添加调试提示样式 */
-.debug-tip {
-  padding: 10px;
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  position: absolute;
-  bottom: 60px;
-  left: 0;
-  right: 0;
-  background: rgba(0, 0, 0, 0.1);
-  border-top: 1px solid var(--border-color);
-  border-bottom: 1px solid var(--border-color);
-}
-
-.debug-tip .el-icon {
-  font-size: 16px;
-  color: var(--el-color-info);
 }
 </style>

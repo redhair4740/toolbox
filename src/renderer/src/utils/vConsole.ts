@@ -24,6 +24,43 @@ export function initVConsole(): void {
   // 默认隐藏面板
   toggleVConsole(false);
   
+  // 隐藏顶部工具栏/标签栏和入口按钮
+  const style = document.createElement('style');
+  style.textContent = `
+    /* 隐藏导航栏和标签 */
+    .eruda-dev-tools .eruda-nav-bar, 
+    .eruda-dev-tools .eruda-nav-bar-container,
+    .eruda-dev-tools .eruda-tab {
+      display: none !important;
+    }
+    .eruda-dev-tools .eruda-tools {
+      border-top: none !important;
+      height: 100% !important;
+    }
+    /* 完全隐藏入口按钮 */
+    #eruda, .eruda-entry-btn {
+      opacity: 0 !important;
+      visibility: hidden !important;
+      display: none !important;
+      width: 0 !important;
+      height: 0 !important;
+      pointer-events: none !important;
+    }
+  `;
+  document.head.appendChild(style);
+  
+  // 尝试直接移除入口按钮元素
+  setTimeout(() => {
+    try {
+      const entryBtn = document.querySelector('.eruda-entry-btn') || document.querySelector('#eruda');
+      if (entryBtn && entryBtn.parentNode) {
+        entryBtn.parentNode.removeChild(entryBtn);
+      }
+    } catch (e) {
+      // 忽略错误
+    }
+  }, 500);
+  
   // 设置快捷键
   document.addEventListener('keydown', handleKeyDown);
   
