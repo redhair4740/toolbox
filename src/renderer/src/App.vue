@@ -2,11 +2,6 @@
   <div class="app-container">
     <!-- 侧边导航 -->
     <div class="sidebar" :class="{ 'sidebar-collapsed': isSidebarCollapsed }">
-      <div class="logo">
-        <img src="./assets/logo-gradient.svg" alt="YO工具箱" class="logo-image" />
-        <!-- <span v-if="!isSidebarCollapsed" class="logo-text">工具箱</span> -->
-      </div>
-
       <div class="nav-items">
         <div class="nav-item" :class="{ active: activeTab === 'home' }" @click="activeTab = 'home'">
           <el-icon><HomeFilled /></el-icon>
@@ -56,10 +51,6 @@
 
     <!-- 主内容区 -->
     <div class="main-content">
-      <div class="content-header">
-        <h1>{{ getPageTitle() }}</h1>
-      </div>
-
       <div class="content-body">
         <Home v-if="activeTab === 'home'" />
         <FileMove v-else-if="activeTab === 'move'" />
@@ -200,27 +191,6 @@ body {
   width: var(--sidebar-collapsed-width);
 }
 
-.logo {
-  height: var(--header-height);
-  display: flex;
-  align-items: center;
-  padding: 0 16px;
-  border-bottom: 1px solid var(--border-color);
-  background-color: var(--bg-color-secondary);
-}
-
-.logo-image {
-  width: 32px;
-  height: 32px;
-}
-
-.logo-text {
-  font-size: 18px;
-  font-weight: bold;
-  margin-left: 12px;
-  color: var(--primary-color);
-}
-
 .nav-items {
   flex: 1;
   padding: 10px 0;
@@ -279,22 +249,6 @@ body {
   display: flex;
   flex-direction: column;
   background-color: var(--bg-color);
-}
-
-.content-header {
-  height: var(--header-height);
-  display: flex;
-  align-items: center;
-  padding: 0 15px;
-  border-bottom: 1px solid var(--border-color);
-  background-color: var(--bg-color-secondary);
-  color: var(--text-color);
-}
-
-.content-header h1 {
-  color: var(--text-color);
-  font-size: 18px;
-  font-weight: 500;
 }
 
 .content-body {
