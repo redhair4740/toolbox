@@ -32,6 +32,8 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 body {
@@ -127,22 +129,21 @@ body {
   opacity: 0;
 }
 
-/* 滚动条样式 */
+/* 滚动条样式 - 隐藏滚动条但保留滚动功能 */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--background-light);
-  border-radius: 4px;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c0c4cc;
-  border-radius: 4px;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a6a9ad;
-} 
+  background: transparent;
+}
