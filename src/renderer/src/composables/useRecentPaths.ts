@@ -1,69 +1,119 @@
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 
-/**
- * 最近路径管理组合式API
- * @param storageKey 存储键名
- * @param maxCount 最大保存数量
- * @returns 最近路径相关方法和状态
- */
-export function useRecentPaths(storageKey: string, maxCount = 5) {
-  // 从localStorage获取保存的路径
-  const getSavedPaths = (): string[] => {
-    const saved = localStorage.getItem(storageKey)
-    return saved ? JSON.parse(saved) : []
+// 最大记录数
+const MAX_RECENT_PATHS = 20
+
+// 创建按类别存储的路径历史
+const categorizedRecentPaths = ref<Record<string, string[]>>({})
+
+export function useRecentPaths(category: string = 'default') {
+  // 从本地存储加载
+  const loadFromStorage = (cat: string) => {
+    try {
+      const savedPaths = localStorage.getItem(`recent_paths_${cat}`)
+      if (savedPaths) {
+        categorizedRecentPaths.value[cat] = JSON.parse(savedPaths)
+      }
+    } catch (error) {
+      console.error(`Failed to load recent paths for category ${cat} from storage:`, error)
+    }
   }
 
-  const recentPaths = ref<string[]>(getSavedPaths())
+  // 确保该类别存在
+  if (!categorizedRecentPaths.value[category]) {
+    categorizedRecentPaths.value[category] = []
+    // 从本地存储尝试加载该类别
+    loadFromStorage(category)
+  }
 
-  // 监听路径变化并保存到localStorage
-  watch(recentPaths, (newValue) => {
-    localStorage.setItem(storageKey, JSON.stringify(newValue))
-  }, { deep: true })
+  // 保存到本地存储
+  const saveToStorage = (cat: string) => {
+    try {
+      localStorage.setItem(`recent_paths_${cat}`, JSON.stringify(categorizedRecentPaths.value[cat]))
+    } catch (error) {
+      console.error(`Failed to save recent paths for category ${cat} to storage:`, error)
+    }
+  }
 
-  /**
-   * 添加路径到最近列表
-   * @param path 路径
-   */
-  const addPath = (path: string) => {
+  // 添加路径
+  const addRecentPath = (path: string) => {
     if (!path) return
     
-    // 如果已存在，先移除
-    const index = recentPaths.value.indexOf(path)
+    // 移除已存在的相同路径
+    const paths = categorizedRecentPaths.value[category]
+    const index = paths.indexOf(path)
     if (index !== -1) {
-      recentPaths.value.splice(index, 1)
+      paths.splice(index, 1)
     }
-    
-    // 添加到最前面
-    recentPaths.value.unshift(path)
-    
-    // 保持最大数量
-    if (recentPaths.value.length > maxCount) {
-      recentPaths.value = recentPaths.value.slice(0, maxCount)
+
+    // 添加到开头
+    paths.unshift(path)
+
+    // 限制数量
+    if (paths.length > MAX_RECENT_PATHS) {
+      categorizedRecentPaths.value[category] = paths.slice(0, MAX_RECENT_PATHS)
+    }
+
+    // 保存到本地存储
+    saveToStorage(category)
+  }
+
+  // 移除路径
+  const removeRecentPath = (path: string) => {
+    const paths = categorizedRecentPaths.value[category]
+    const index = paths.indexOf(path)
+    if (index !== -1) {
+      paths.splice(index, 1)
+      saveToStorage(category)
     }
   }
 
-  /**
-   * 移除路径
-   * @param path 路径
-   */
-  const removePath = (path: string) => {
-    const index = recentPaths.value.indexOf(path)
-    if (index !== -1) {
-      recentPaths.value.splice(index, 1)
-    }
+  // 清空所有路径
+  const clearRecentPaths = () => {
+    categorizedRecentPaths.value[category] = []
+    saveToStorage(category)
   }
 
-  /**
-   * 清空路径列表
-   */
-  const clearPaths = () => {
-    recentPaths.value = []
+  // 获取最近使用的路径
+  const getMostRecentPath = () => {
+    return categorizedRecentPaths.value[category][0]
+  }
+
+  // 检查路径是否存在
+  const hasRecentPath = (path: string) => {
+    return categorizedRecentPaths.value[category].includes(path)
+  }
+
+  // 获取最近路径列表
+  const getRecentPaths = () => {
+    return categorizedRecentPaths.value[category]
+  }
+
+  // 计算属性：获取当前类别的路径
+  const recentPaths = ref(categorizedRecentPaths.value[category] || [])
+
+  // 当类别路径发生变化时更新recentPaths
+  const updateRecentPaths = () => {
+    recentPaths.value = categorizedRecentPaths.value[category] || []
+  }
+
+  // 监听路径变化
+  if (typeof window !== 'undefined') {
+    window.addEventListener('storage', (e) => {
+      if (e.key === `recent_paths_${category}`) {
+        loadFromStorage(category)
+        updateRecentPaths()
+      }
+    })
   }
 
   return {
     recentPaths,
-    addPath,
-    removePath,
-    clearPaths
+    addRecentPath,
+    removeRecentPath,
+    clearRecentPaths,
+    getMostRecentPath,
+    hasRecentPath,
+    getRecentPaths
   }
-} 
+}

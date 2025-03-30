@@ -2,11 +2,6 @@
   <div class="app-container">
     <!-- 侧边导航 -->
     <div class="sidebar" :class="{ 'sidebar-collapsed': isSidebarCollapsed }">
-      <div class="logo">
-        <img src="./assets/logo-gradient.svg" alt="YO工具箱" class="logo-image" />
-        <!-- <span v-if="!isSidebarCollapsed" class="logo-text">工具箱</span> -->
-      </div>
-
       <div class="nav-items">
         <div class="nav-item" :class="{ active: activeTab === 'home' }" @click="activeTab = 'home'">
           <el-icon><HomeFilled /></el-icon>
@@ -45,6 +40,8 @@
           <span v-if="!isSidebarCollapsed">设置</span>
         </div>
       </div>
+      
+      <!-- 调试信息提示区域已移除，但保留快捷键功能 -->
 
       <div class="sidebar-toggle" @click="toggleSidebar">
         <el-icon v-if="isSidebarCollapsed"><ArrowRight /></el-icon>
@@ -54,10 +51,6 @@
 
     <!-- 主内容区 -->
     <div class="main-content">
-      <div class="content-header">
-        <h1>{{ getPageTitle() }}</h1>
-      </div>
-
       <div class="content-body">
         <Home v-if="activeTab === 'home'" />
         <FileMove v-else-if="activeTab === 'move'" />
@@ -70,8 +63,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { HomeFilled, FolderOpened, Edit, Search, Setting, ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
+import { ref, onMounted, watch } from 'vue'
+import { HomeFilled, FolderOpened, Edit, Search, Setting, ArrowLeft, ArrowRight, InfoFilled } from '@element-plus/icons-vue'
 import FileMove from './components/FileMove.vue'
 import FileRename from './components/FileRename.vue'
 import FileContentSearch from './components/FileContentSearch.vue'
@@ -81,7 +74,7 @@ import { useTheme } from './composables/useTheme'
 import { useSettings } from './composables/useSettings'
 
 // 初始化主题
-useTheme()
+const { updateTheme } = useTheme()
 
 // 获取设置
 const { settings } = useSettings()
@@ -89,8 +82,18 @@ const { settings } = useSettings()
 const activeTab = ref('home')
 const isSidebarCollapsed = ref(false)
 
+// 防止在切换到设置页面时重置设置
+let settingsComponentInitialized = false
+
 // 在组件挂载时应用侧边栏折叠状态设置
 onMounted(() => {
+  // 检查settings.ui是否存在，如果不存在则初始化
+  if (!settings.ui) {
+    settings.ui = { sidebarCollapsed: false }
+  } else if (settings.ui.sidebarCollapsed === undefined) {
+    settings.ui.sidebarCollapsed = false
+  }
+  
   isSidebarCollapsed.value = settings.ui.sidebarCollapsed
 })
 
@@ -99,6 +102,20 @@ document.addEventListener('settings-saved', (event) => {
   const savedSettings = (event as CustomEvent).detail
   if (savedSettings && savedSettings.ui) {
     isSidebarCollapsed.value = savedSettings.ui.sidebarCollapsed
+  }
+})
+
+// 监听设置中主题的变化
+watch(() => settings.general.theme, (newTheme) => {
+  if (newTheme) updateTheme(newTheme)
+}, { immediate: true })
+
+// 监听标签页变化
+watch(activeTab, (newTab) => {
+  if (newTab === 'settings') {
+    if (!settingsComponentInitialized) {
+      settingsComponentInitialized = true
+    }
   }
 })
 
@@ -121,12 +138,18 @@ const getPageTitle = () => {
 
 const toggleSidebar = () => {
   isSidebarCollapsed.value = !isSidebarCollapsed.value
-  // 更新设置中的侧边栏状态
-  settings.ui.sidebarCollapsed = isSidebarCollapsed.value
+  
+  // 确保settings.ui对象存在
+  if (!settings.ui) {
+    settings.ui = { sidebarCollapsed: isSidebarCollapsed.value }
+  } else {
+    // 更新设置中的侧边栏状态
+    settings.ui.sidebarCollapsed = isSidebarCollapsed.value
+  }
 }
 </script>
 
-<style>
+<style scoped>
 /* 全局样式变量已移至theme.css */
 
 * {
@@ -166,27 +189,6 @@ body {
 
 .sidebar-collapsed {
   width: var(--sidebar-collapsed-width);
-}
-
-.logo {
-  height: var(--header-height);
-  display: flex;
-  align-items: center;
-  padding: 0 16px;
-  border-bottom: 1px solid var(--border-color);
-  background-color: var(--bg-color-secondary);
-}
-
-.logo-image {
-  width: 32px;
-  height: 32px;
-}
-
-.logo-text {
-  font-size: 18px;
-  font-weight: bold;
-  margin-left: 12px;
-  color: var(--primary-color);
 }
 
 .nav-items {
@@ -247,22 +249,6 @@ body {
   display: flex;
   flex-direction: column;
   background-color: var(--bg-color);
-}
-
-.content-header {
-  height: var(--header-height);
-  display: flex;
-  align-items: center;
-  padding: 0 15px;
-  border-bottom: 1px solid var(--border-color);
-  background-color: var(--bg-color-secondary);
-  color: var(--text-color);
-}
-
-.content-header h1 {
-  color: var(--text-color);
-  font-size: 18px;
-  font-weight: 500;
 }
 
 .content-body {

@@ -1,111 +1,229 @@
-import { ref, reactive, watch } from 'vue'
+import { reactive, watch } from 'vue'
 
 // 默认设置
-const DEFAULT_SETTINGS = {
-  // 界面设置
-  ui: {
-    theme: 'light', // 主题: light, dark, system
-    sidebarCollapsed: false, // 侧边栏是否折叠
-    confirmBeforeOperation: true, // 操作前是否确认
-    showOperationLogs: true // 是否显示操作日志
+const defaultSettings = {
+  // 通用设置
+  general: {
+    theme: 'system',
+    language: 'zh-CN',
+    zoom: 100,
+    autoStart: false,
+    minimizeToTray: true
   },
+  
   // 文件操作设置
   file: {
-    preserveTimestamp: false, // 移动文件时是否保留时间戳
-    overwriteExisting: false, // 是否覆盖已存在的文件
-    createBackup: true, // 重命名前是否创建备份
-    maxRecentPaths: 5, // 最近路径最大数量
-    defaultExtensions: ['.mkv', '.mp4', '.iso', '.avi', '.mpg'] // 默认文件扩展名
+    defaultConflictStrategy: 'ask',
+    enableParallel: true,
+    maxParallel: 4,
+    confirmBeforeDelete: true,
+    preserveTimestamp: true,
+    bufferSize: '65536'
   },
-  // 性能设置
-  performance: {
-    batchSize: 10, // 批处理大小
-    parallelOperations: true, // 是否并行操作
-    searchDepthLimit: 0 // 搜索深度限制 (0表示无限制)
+  
+  // 搜索设置
+  search: {
+    threads: 4,
+    ignoreCase: true,
+    includeHidden: false,
+    maxFileSize: 100,
+    maxFileSizeUnit: 'MB',
+    excludedFiles: [
+      'node_modules/**/*',
+      '.git/**/*',
+      '*.log',
+      '*.tmp',
+      '*.temp',
+      '*.swp',
+      '*~'
+    ]
+  },
+  
+  // 高级设置
+  advanced: {
+    logLevel: 'info',
+    logRetention: 7,
+    maxCacheSize: 1000,
+    devTools: false
+  },
+  
+  // 界面设置
+  ui: {
+    sidebarCollapsed: false
   }
 }
 
-// 设置存储键
-const SETTINGS_STORAGE_KEY = 'yo_toolbox_settings'
+// 设置类型
+interface AppSettings {
+  general: {
+    theme: string;
+    language: string;
+    zoom: number;
+    autoStart: boolean;
+    minimizeToTray: boolean;
+  };
+  file: {
+    defaultConflictStrategy: string;
+    enableParallel: boolean;
+    maxParallel: number;
+    confirmBeforeDelete: boolean;
+    preserveTimestamp: boolean;
+    bufferSize: string;
+  };
+  search: {
+    threads: number;
+    ignoreCase: boolean;
+    includeHidden: boolean;
+    maxFileSize: number;
+    maxFileSizeUnit: string;
+    excludedFiles: string[];
+  };
+  advanced: {
+    logLevel: string;
+    logRetention: number;
+    maxCacheSize: number;
+    devTools: boolean;
+  };
+  ui: {
+    sidebarCollapsed: boolean;
+  };
+}
 
-/**
- * 应用设置管理组合式API
- * @returns 设置相关方法和状态
- */
-export function useSettings() {
-  // 从localStorage获取保存的设置
-  const loadSettings = () => {
-    try {
-      const saved = localStorage.getItem(SETTINGS_STORAGE_KEY)
-      if (!saved) return DEFAULT_SETTINGS
-      
-      const parsedSettings = JSON.parse(saved)
-      
-      // 合并默认设置和保存的设置，确保新增的设置项也存在
-      return {
-        ui: { ...DEFAULT_SETTINGS.ui, ...parsedSettings.ui },
-        file: { ...DEFAULT_SETTINGS.file, ...parsedSettings.file },
-        performance: { ...DEFAULT_SETTINGS.performance, ...parsedSettings.performance }
+// 创建一个全局的设置存储
+const settings = reactive<AppSettings>(JSON.parse(JSON.stringify(defaultSettings)));
+// 初始化标志
+let initialized = false;
+
+// 初始加载设置
+(async () => {
+  try {
+    if (!initialized) {
+      const savedSettings = localStorage.getItem('app_settings');
+      if (savedSettings) {
+        const parsedSettings = JSON.parse(savedSettings);
+        
+        // 合并设置，确保新增的默认设置也被包含
+        Object.keys(defaultSettings).forEach(key => {
+          const category = key as keyof AppSettings;
+          if (parsedSettings[category]) {
+            settings[category] = {
+              ...JSON.parse(JSON.stringify(defaultSettings[category])),
+              ...parsedSettings[category]
+            };
+          }
+        });
       }
+      
+      initialized = true;
+    }
+  } catch (error) {
+    console.error('初始化设置失败', error);
+  }
+})();
+
+export function useSettings() {
+  // 获取所有设置
+  const getAllSettings = (): AppSettings => {
+    return JSON.parse(JSON.stringify(settings))
+  }
+  
+  // 获取特定分类的设置
+  const getCategorySettings = <T extends keyof AppSettings>(category: T): AppSettings[T] => {
+    return JSON.parse(JSON.stringify(settings[category]))
+  }
+  
+  // 更新设置
+  const updateSettings = <T extends keyof AppSettings>(
+    category: T,
+    newSettings: Partial<AppSettings[T]>
+  ): void => {
+    settings[category] = {
+      ...settings[category],
+      ...newSettings
+    }
+    
+    saveSettings()
+  }
+  
+  // 重置特定分类的设置
+  const resetCategorySettings = <T extends keyof AppSettings>(category: T): void => {
+    settings[category] = JSON.parse(JSON.stringify(defaultSettings[category]))
+    saveSettings()
+  }
+  
+  // 重置所有设置
+  const resetAllSettings = (): void => {
+    Object.keys(defaultSettings).forEach(key => {
+      const category = key as keyof AppSettings
+      settings[category] = JSON.parse(JSON.stringify(defaultSettings[category]))
+    })
+    
+    saveSettings()
+  }
+  
+  // 保存设置到本地存储
+  const saveSettings = (): void => {
+    try {
+      // 保存设置到localStorage
+      localStorage.setItem('app_settings', JSON.stringify(settings))
+      
+      // 同步更新主题设置到theme_mode
+      localStorage.setItem('theme_mode', settings.general.theme)
     } catch (error) {
-      console.error('加载设置失败:', error)
-      return DEFAULT_SETTINGS
+      console.error('Failed to save settings:', error)
     }
   }
   
-  // 设置对象
-  const settings = reactive(loadSettings())
+  // 导出设置
+  const exportSettings = (): string => {
+    return JSON.stringify(settings, null, 2)
+  }
   
-  // 是否已修改
-  const isDirty = ref(false)
-  
-  // 监听设置变化并标记为已修改
-  watch(settings, () => {
-    isDirty.value = true
-  }, { deep: true })
-  
-  /**
-   * 保存设置到localStorage
-   */
-  const saveSettings = () => {
+  // 导入设置
+  const importSettings = (jsonSettings: string): boolean => {
     try {
-      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings))
-      isDirty.value = false
+      const parsedSettings = JSON.parse(jsonSettings)
       
-      // 触发DOM更新，确保设置立即生效
-      document.dispatchEvent(new CustomEvent('settings-saved', { detail: settings }))
+      // 验证设置格式
+      if (typeof parsedSettings !== 'object') {
+        throw new Error('Invalid settings format')
+      }
       
+      // 合并设置
+      Object.keys(defaultSettings).forEach(key => {
+        const category = key as keyof AppSettings
+        if (parsedSettings[category]) {
+          settings[category] = {
+            ...JSON.parse(JSON.stringify(defaultSettings[category])),
+            ...parsedSettings[category]
+          }
+        }
+      })
+      
+      saveSettings()
       return true
     } catch (error) {
-      console.error('保存设置失败:', error)
+      console.error('Failed to import settings:', error)
       return false
     }
   }
   
-  /**
-   * 重置设置为默认值
-   */
-  const resetSettings = () => {
-    Object.assign(settings.ui, DEFAULT_SETTINGS.ui)
-    Object.assign(settings.file, DEFAULT_SETTINGS.file)
-    Object.assign(settings.performance, DEFAULT_SETTINGS.performance)
-    isDirty.value = true
-  }
-  
-  /**
-   * 重置特定分类的设置
-   * @param category 设置分类
-   */
-  const resetCategory = (category: 'ui' | 'file' | 'performance') => {
-    Object.assign(settings[category], DEFAULT_SETTINGS[category])
-    isDirty.value = true
-  }
+  // 监听设置变化
+  watch(settings, () => {
+    if (initialized) {
+      saveSettings()
+    }
+  }, { deep: true })
   
   return {
     settings,
-    isDirty,
+    getAllSettings,
+    getCategorySettings,
+    updateSettings,
+    resetCategorySettings,
+    resetAllSettings,
     saveSettings,
-    resetSettings,
-    resetCategory
+    exportSettings,
+    importSettings
   }
-} 
+}

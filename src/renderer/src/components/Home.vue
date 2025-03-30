@@ -76,11 +76,11 @@ import { FolderOpened, Edit, Search } from '@element-plus/icons-vue'
 .welcome-section {
   display: flex;
   align-items: center;
-  margin-bottom: 40px;
+  margin-bottom: 30px;
   background-color: var(--bg-color-secondary);
   border-radius: 8px;
   box-shadow: 0 2px 12px var(--shadow-color);
-  padding: 40px;
+  padding: 25px;
 }
 
 .welcome-text {
@@ -88,14 +88,14 @@ import { FolderOpened, Edit, Search } from '@element-plus/icons-vue'
 }
 
 .welcome-text h2 {
-  font-size: 32px;
+  font-size: 26px;
   font-weight: 600;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
   color: var(--text-color);
 }
 
 .welcome-text p {
-  font-size: 16px;
+  font-size: 14px;
   color: var(--text-light);
 }
 
@@ -109,7 +109,7 @@ import { FolderOpened, Edit, Search } from '@element-plus/icons-vue'
 .welcome-image img {
   max-width: 100%;
   height: auto;
-  max-height: 250px;
+  max-height: 200px;
 }
 
 .features-section {

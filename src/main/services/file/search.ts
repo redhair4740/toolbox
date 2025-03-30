@@ -1,206 +1,336 @@
-import * as fs from 'fs'
-import path from 'node:path'
-import { FileWithFullPath } from '../../../types/file-types'
-import { logAndFormatError } from '../../utils/error-handler'
+import fs from 'fs'
+import path from 'path'
+import { EventEmitter } from 'events'
+import { WorkerPool } from '../../utils/worker-pool'
+import { createReadStream } from '../../utils/file-stream'
+import { ProgressCallback } from '../../utils/progress'
+import { handleError } from '../../utils/error-handler'
 
 /**
- * 递归搜索目录
- * @param currentDir 当前目录
- * @param extensions 文件扩展名数组
- * @param files 文件列表
- * @param processedCount 已处理文件计数
- * @param totalItems 总文件数
- * @param progressCallback 进度回调函数
+ * 文件搜索管理器
+ * 负责在文件内容中搜索指定的文本或正则表达式
  */
-async function searchDirectory(
-  currentDir: string,
-  extensions: string[],
-  files: FileWithFullPath[],
-  processedCount: { value: number },
-  totalItems: { value: number },
-  progressCallback?: (current: number, total: number, file: string) => void
-): Promise<void> {
-  try {
-    const items = await fs.promises.readdir(currentDir, { withFileTypes: true })
-    totalItems.value += items.length - 1 // 更新总数（-1是因为已经计算了当前目录）
-    
-    // 分批处理文件夹内容
-    const batchSize = 100
-    for (let i = 0; i < items.length; i += batchSize) {
-      const batch = items.slice(i, i + batchSize)
-      
-      // 并行处理每个批次
-      await Promise.all(
-        batch.map(async (item) => {
-          const fullPath = path.join(currentDir, item.name)
-          processedCount.value++
-          
-          // 报告进度
-          if (progressCallback) {
-            progressCallback(processedCount.value, totalItems.value, fullPath)
-          }
-          
-          if (item.isDirectory()) {
-            // 递归搜索子目录
-            await searchDirectory(fullPath, extensions, files, processedCount, totalItems, progressCallback)
-          } else if (item.isFile()) {
-            const ext = path.extname(item.name).toLowerCase()
-            // 如果扩展名在过滤列表中或者没有指定过滤
-            if (extensions.length === 0 || extensions.includes(ext)) {
-              files.push({
-                fullPath,
-                fileName: item.name,
-                targetPath: ''
-              })
-            }
-          }
-        })
-      )
-    }
-  } catch (error) {
-    console.error(`搜索目录 ${currentDir} 时出错:`, error)
+export class FileSearchManager extends EventEmitter {
+  private isCancelled: boolean = false
+  private workerPool: WorkerPool
+  private readonly MAX_FILE_SIZE: number = 100 * 1024 * 1024 // 100MB
+  private readonly CONTEXT_LINES: number = 2 // 匹配上下文行数
+
+  constructor() {
+    super()
+    this.workerPool = new WorkerPool()
   }
-}
 
-/**
- * 搜索指定目录下的文件
- * @param dir 目录路径
- * @param extensions 文件扩展名数组
- * @param progressCallback 进度回调函数
- * @returns 文件列表
- */
-export async function searchFiles(
-  dir: string, 
-  extensions: string[],
-  progressCallback?: (current: number, total: number, file: string) => void
-): Promise<FileWithFullPath[]> {
-  try {
-    const normalizedExtensions = extensions.map(e => e.startsWith('.') ? e.toLowerCase() : `.${e.toLowerCase()}`)
-    const files: FileWithFullPath[] = []
-    const processedCount = { value: 0 }
-    const totalItems = { value: 1 } // 初始值为1表示开始处理根目录
-    
-    await searchDirectory(dir, normalizedExtensions, files, processedCount, totalItems, progressCallback)
-    
-    return files
-  } catch (error) {
-    const errMsg = logAndFormatError(error, '搜索文件时出错')
-    throw new Error(errMsg)
-  }
-}
-
-/**
- * 搜索单个文件中的内容
- * @param filePath 文件路径
- * @param searchText 搜索文本
- * @param ignoreCase 是否忽略大小写
- * @returns 匹配结果
- */
-async function searchInFile(
-  filePath: string, 
-  searchText: string, 
-  ignoreCase: boolean
-): Promise<{ found: boolean; matches: string[]; lineNumbers: number[] }> {
-  try {
-    const content = await fs.promises.readFile(filePath, 'utf-8')
-    const lines = content.split(/\r?\n/)
-    const matches: string[] = []
-    const lineNumbers: number[] = []
-    
-    const searchTerm = ignoreCase ? searchText.toLowerCase() : searchText
-
-    lines.forEach((line, index) => {
-      const lineToSearch = ignoreCase ? line.toLowerCase() : line
-      if (lineToSearch.includes(searchTerm)) {
-        matches.push(line.trim())
-        lineNumbers.push(index + 1) // 行号从1开始
-      }
-    })
-    
-    return {
-      found: matches.length > 0,
-      matches,
-      lineNumbers
-    }
-  } catch (error) {
-    console.error(`搜索文件 ${filePath} 内容时出错:`, error)
-    return {
-      found: false,
-      matches: [],
-      lineNumbers: []
-    }
-  }
-}
-
-/**
- * 在多个文件中搜索内容
- * @param files 文件路径数组
- * @param searchText 搜索文本
- * @param ignoreCase 是否忽略大小写
- * @param progressCallback 进度回调函数
- * @returns 搜索结果
- */
-export async function searchInFiles(
-  files: string[],
-  searchText: string,
-  ignoreCase: boolean = false,
-  progressCallback?: (current: number, total: number, file: string) => void
-): Promise<Array<{
-  filePath: string;
-  fileName: string;
-  matches: string[];
-  lineNumbers: number[];
-}>> {
-  try {
+  /**
+   * 在文件中搜索内容
+   */
+  async searchInFiles(options: {
+    directory: string
+    content: string
+    pattern?: string
+    excludePatterns?: string[]
+    recursive?: boolean
+    caseSensitive?: boolean
+    useRegex?: boolean
+    maxFileSize?: number
+    threads?: number
+  }, progressCallback?: ProgressCallback): Promise<Array<{
+    filePath: string
+    matches: Array<{
+      line: number
+      content: string
+      context?: string
+    }>
+  }>> {
+    this.isCancelled = false
     const results: Array<{
-      filePath: string;
-      fileName: string;
-      matches: string[];
-      lineNumbers: number[];
+      filePath: string
+      matches: Array<{
+        line: number
+        content: string
+        context?: string
+      }>
     }> = []
-    
-    const batchSize = 20
-    const total = files.length
-    
-    for (let i = 0; i < files.length; i += batchSize) {
-      const batch = files.slice(i, i + batchSize)
-      
-      const batchResults = await Promise.all(
-        batch.map(async (filePath, index) => {
-          const current = i + index + 1
-          
+
+    const {
+      directory,
+      content,
+      pattern,
+      excludePatterns = [],
+      recursive = true,
+      caseSensitive = false,
+      useRegex = false,
+      maxFileSize = this.MAX_FILE_SIZE,
+      threads = 4
+    } = options
+
+    try {
+      // 设置worker池大小
+      this.workerPool.setMaxWorkers(threads)
+
+      // 准备搜索正则表达式
+      let searchRegex: RegExp
+      if (useRegex) {
+        try {
+          searchRegex = new RegExp(content, caseSensitive ? 'g' : 'gi')
+        } catch (error) {
+          throw new Error(`Invalid regular expression: ${error.message}`)
+        }
+      } else {
+        const escapedContent = content.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        searchRegex = new RegExp(escapedContent, caseSensitive ? 'g' : 'gi')
+      }
+
+      // 编译排除模式
+      const excludeRegexps = excludePatterns.map(pattern => {
+        // 将glob模式转换为正则表达式
+        const regexPattern = pattern
+          .replace(/\./g, '\\.')
+          .replace(/\*/g, '.*')
+          .replace(/\?/g, '.')
+        return new RegExp(regexPattern)
+      })
+
+      // 获取要搜索的文件列表
+      const files = await this.getFilesToSearch(directory, {
+        pattern,
+        excludePatterns: excludeRegexps,
+        recursive,
+        maxFileSize
+      })
+
+      if (files.length === 0) {
+        return []
+      }
+
+      let searched = 0
+      let matchesFound = 0
+
+      // 创建搜索任务
+      const tasks = files.map(file => async () => {
+        if (this.isCancelled) return null
+
+        try {
+          const fileMatches = await this.searchInFile(file, searchRegex)
+          searched++
+
           if (progressCallback) {
-            progressCallback(current, total, filePath)
+            matchesFound += fileMatches.length
+            const percentage = Math.floor((searched / files.length) * 100)
+            progressCallback(searched, files.length, file, percentage)
+            this.emit('progress', {
+              percentage,
+              searched,
+              total: files.length,
+              matches: matchesFound,
+              currentFile: file
+            })
           }
-          
-          try {
-            const { found, matches, lineNumbers } = await searchInFile(filePath, searchText, ignoreCase)
-            
-            if (found) {
-              return {
-                filePath,
-                fileName: path.basename(filePath),
-                matches,
-                lineNumbers
-              }
+
+          if (fileMatches.length > 0) {
+            return {
+              filePath: file,
+              matches: fileMatches
             }
-            
-            return null
-          } catch (error) {
-            console.error(`搜索文件 ${filePath} 时出错:`, error)
-            return null
           }
-        })
-      )
-      
-      batchResults
-        .filter((result): result is NonNullable<typeof result> => result !== null)
-        .forEach(result => results.push(result))
+        } catch (error) {
+          console.error(`Error searching in file ${file}:`, error)
+        }
+
+        return null
+      })
+
+      // 执行搜索任务
+      const searchResults = await this.workerPool.runTasks(tasks)
+
+      // 过滤有效结果并添加到结果列表
+      searchResults.filter(Boolean).forEach(result => {
+        results.push(result)
+      })
+
+      return results
+    } catch (error) {
+      throw handleError('Failed to search in files', error)
+    }
+  }
+
+  /**
+   * 取消搜索
+   */
+  async cancelSearch(): Promise<void> {
+    this.isCancelled = true
+    
+    // 关闭工作线程池
+    if (this.workerPool) {
+      await this.workerPool.terminate()
+      this.workerPool = null
     }
     
-    return results
-  } catch (error) {
-    const errMsg = logAndFormatError(error, '搜索文件内容时出错')
-    throw new Error(errMsg)
+    this.emit('search-cancelled')
   }
-} 
+
+  /**
+   * 获取要搜索的文件列表
+   */
+  private async getFilesToSearch(directory: string, options: {
+    pattern?: string
+    excludePatterns: RegExp[]
+    recursive: boolean
+    maxFileSize: number
+  }): Promise<string[]> {
+    const files: string[] = []
+    const { pattern, excludePatterns, recursive, maxFileSize } = options
+
+    // 编译文件模式正则表达式
+    let fileRegex: RegExp | null = null
+    if (pattern) {
+      // 将glob模式转换为正则表达式
+      const regexPattern = pattern
+        .replace(/\./g, '\\.')
+        .replace(/\*/g, '.*')
+        .replace(/\?/g, '.')
+      fileRegex = new RegExp(regexPattern)
+    }
+
+    // 递归函数，用于遍历目录
+    const traverseDirectory = async (dir: string) => {
+      if (this.isCancelled) return
+
+      try {
+        const entries = await fs.promises.readdir(dir, { withFileTypes: true })
+
+        for (const entry of entries) {
+          if (this.isCancelled) break
+
+          const fullPath = path.join(dir, entry.name)
+
+          // 检查是否应该排除此路径
+          const shouldExclude = excludePatterns.some(regex => regex.test(fullPath))
+          if (shouldExclude) continue
+
+          if (entry.isDirectory()) {
+            if (recursive) {
+              await traverseDirectory(fullPath)
+            }
+          } else if (entry.isFile()) {
+            // 检查文件是否匹配模式
+            if (fileRegex && !fileRegex.test(entry.name)) continue
+
+            try {
+              // 检查文件大小
+              const stats = await fs.promises.stat(fullPath)
+              if (stats.size <= maxFileSize) {
+                files.push(fullPath)
+              }
+            } catch (error) {
+              console.error(`Error getting stats for ${fullPath}:`, error)
+            }
+          }
+        }
+      } catch (error) {
+        console.error(`Error reading directory ${dir}:`, error)
+      }
+    }
+
+    await traverseDirectory(directory)
+    return files
+  }
+
+  /**
+   * 在单个文件中搜索
+   */
+  private async searchInFile(filePath: string, regex: RegExp): Promise<Array<{
+    line: number
+    content: string
+    context?: string
+  }>> {
+    const matches: Array<{
+      line: number
+      content: string
+      context?: string
+    }> = []
+
+    try {
+      // 检查文件是否是二进制文件
+      if (await this.isBinaryFile(filePath)) {
+        return []
+      }
+
+      // 读取文件内容
+      const content = await fs.promises.readFile(filePath, 'utf8')
+      
+      // 分割为行
+      const lines = content.split(/\r?\n/)
+      
+      // 搜索每一行
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i]
+        
+        // 重置正则表达式的lastIndex
+        regex.lastIndex = 0
+        
+        if (regex.test(line)) {
+          // 获取上下文
+          const contextStart = Math.max(0, i - this.CONTEXT_LINES)
+          const contextEnd = Math.min(lines.length - 1, i + this.CONTEXT_LINES)
+          const context = lines.slice(contextStart, contextEnd + 1)
+            .map((l, idx) => {
+              const lineNumber = contextStart + idx + 1
+              const prefix = lineNumber === i + 1 ? '> ' : '  '
+              return `${prefix}${lineNumber}: ${l}`
+            })
+            .join('\n')
+
+          matches.push({
+            line: i + 1,
+            content: line,
+            context
+          })
+        }
+      }
+
+      return matches
+    } catch (error) {
+      console.error(`Error searching in file ${filePath}:`, error)
+      return []
+    }
+  }
+
+  /**
+   * 检查文件是否是二进制文件
+   */
+  private async isBinaryFile(filePath: string): Promise<boolean> {
+    try {
+      // 读取文件的前4KB来判断是否是二进制文件
+      const buffer = Buffer.alloc(4096)
+      const fd = await fs.promises.open(filePath, 'r')
+      
+      try {
+        const { bytesRead } = await fd.read(buffer, 0, 4096, 0)
+        
+        if (bytesRead === 0) return false
+        
+        // 检查是否包含空字节（通常表示二进制文件）
+        for (let i = 0; i < bytesRead; i++) {
+          if (buffer[i] === 0) return true
+        }
+        
+        // 检查非ASCII字符的比例
+        let nonAsciiCount = 0
+        for (let i = 0; i < bytesRead; i++) {
+          if (buffer[i] < 32 && buffer[i] !== 9 && buffer[i] !== 10 && buffer[i] !== 13) {
+            nonAsciiCount++
+          }
+        }
+        
+        // 如果非ASCII字符超过30%，认为是二进制文件
+        return nonAsciiCount / bytesRead > 0.3
+      } finally {
+        await fd.close()
+      }
+    } catch (error) {
+      console.error(`Error checking if ${filePath} is binary:`, error)
+      return true // 出错时假设是二进制文件
+    }
+  }
+}
