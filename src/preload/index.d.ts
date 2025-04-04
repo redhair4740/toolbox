@@ -74,5 +74,13 @@ declare global {
       ) => Promise<BatchOperationResult>
       onRenameProgress: (callback: ProgressListener) => () => boolean
     }
+    // --- 新增自定义标题栏 API ---
+    electronAPI: {
+      sendMinimize: () => void
+      sendMaximizeRestore: () => void
+      sendClose: () => void
+      onWindowStateChange: (callback: (isMaximized: boolean) => void) => void
+    }
+    // --- 结束新增 ---
   }
 }

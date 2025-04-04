@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer } from 'electron' // 移除 IpcRendererEvent
 import { electronAPI } from '@electron-toolkit/preload'
 
 // 进度事件监听器类型
@@ -37,7 +37,7 @@ ipcRenderer.on('rename-progress', (_, data) => {
   listeners.renameProgress.forEach(listener => listener(data))
 })
 
-// Custom APIs for renderer
+// Custom APIs for renderer (保持原有 API)
 const api = {
   // 目录对话框
   openDirectoryDialog: () => ipcRenderer.invoke('open-directory-dialog'),
@@ -177,6 +177,23 @@ const api = {
     })
 }
 
+// --- 新增自定义标题栏 API 对象 ---
+const titlebarAPI = {
+  sendMinimize: () => ipcRenderer.send('minimize-window'),
+  sendMaximizeRestore: () => ipcRenderer.send('maximize-restore-window'),
+  sendClose: () => ipcRenderer.send('close-window'),
+  onWindowStateChange: (callback: (isMaximized: boolean) => void) => {
+    // 注意：这里没有使用 event 参数，所以不需要 IpcRendererEvent 类型
+    const listener = (_event: unknown, isMaximized: boolean) => callback(isMaximized)
+    ipcRenderer.on('window-maximized-state', listener)
+    // 返回一个移除监听器的函数，以便组件卸载时清理
+    return () => {
+      ipcRenderer.removeListener('window-maximized-state', listener)
+    }
+  }
+}
+// --- 结束新增 ---
+
 // Use `contextBridge` APIs to expose Electron APIs to
 // renderer only if context isolation is enabled, otherwise
 // just add to the DOM global.
@@ -204,6 +221,7 @@ if (process.contextIsolated) {
       }
     })
     contextBridge.exposeInMainWorld('api', api)
+    contextBridge.exposeInMainWorld('titlebarAPI', titlebarAPI) // 暴露新的 API
   } catch (error) {
     console.error('无法暴露API到渲染进程:', error)
   }
@@ -232,4 +250,6 @@ if (process.contextIsolated) {
   }
   // @ts-ignore (define in dts)
   window.api = api
+  // @ts-ignore (define in dts)
+  window.titlebarAPI = titlebarAPI // 在非隔离环境暴露新的 API
 }

@@ -1,4 +1,5 @@
 <template>
+  <CustomTitlebar /> <!-- 添加自定义标题栏 -->
   <div class="app-container">
     <!-- 侧边导航 -->
     <div class="sidebar" :class="{ 'sidebar-collapsed': isSidebarCollapsed }">
@@ -64,7 +65,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
-import { HomeFilled, FolderOpened, Edit, Search, Setting, ArrowLeft, ArrowRight, InfoFilled } from '@element-plus/icons-vue'
+import { HomeFilled, FolderOpened, Edit, Search, Setting, ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
 import FileMove from './components/FileMove.vue'
 import FileRename from './components/FileRename.vue'
 import FileContentSearch from './components/FileContentSearch.vue'
@@ -72,6 +73,7 @@ import Settings from './components/Settings.vue'
 import Home from './components/Home.vue'
 import { useTheme } from './composables/useTheme'
 import { useSettings } from './composables/useSettings'
+import CustomTitlebar from './components/CustomTitlebar.vue' // 导入自定义标题栏
 
 // 初始化主题
 const { updateTheme } = useTheme()
@@ -119,23 +121,6 @@ watch(activeTab, (newTab) => {
   }
 })
 
-const getPageTitle = () => {
-  switch (activeTab.value) {
-    case 'home':
-      return '欢迎使用YO的工具箱'
-    case 'move':
-      return '文件移动'
-    case 'rename':
-      return '文件重命名'
-    case 'content-search':
-      return '文件内容搜索'
-    case 'settings':
-      return '设置'
-    default:
-      return ''
-  }
-}
-
 const toggleSidebar = () => {
   isSidebarCollapsed.value = !isSidebarCollapsed.value
   
@@ -169,10 +154,12 @@ body {
 
 .app-container {
   display: flex;
-  height: 100vh;
+  /* height: 100vh; */ /* 改为 calc */
+  height: calc(100vh - 32px); /* 减去标题栏高度 */
   width: 100vw;
   background-color: var(--bg-color);
   color: var(--text-color);
+  padding-top: 32px; /* 为固定标题栏留出空间 */
 }
 
 .sidebar {
@@ -185,6 +172,7 @@ body {
   flex-direction: column;
   z-index: 1000;
   border-right: 1px solid var(--border-color);
+  -webkit-app-region: no-drag; /* 防止侧边栏触发拖动 */
 }
 
 .sidebar-collapsed {
@@ -249,6 +237,7 @@ body {
   display: flex;
   flex-direction: column;
   background-color: var(--bg-color);
+  /* 移除 padding-top 和 -webkit-app-region: drag */
 }
 
 .content-body {
@@ -257,5 +246,6 @@ body {
   padding: 15px;
   background-color: var(--bg-color);
   color: var(--text-color);
+  -webkit-app-region: no-drag; /* 防止内容区域触发拖动 */
 }
 </style>
