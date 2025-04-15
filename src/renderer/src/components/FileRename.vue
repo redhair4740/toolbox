@@ -1,134 +1,127 @@
 <template>
-  <div class="file-rename-container">
-    <!-- 操作面板 -->
-    <div class="action-panel">
-      <el-card class="panel-card">
-        <template #header>
-          <div class="card-header">
-            <span>设置路径</span>
-          </div>
-        </template>
-
-        <div class="path-inputs">
-          <div class="path-group">
-            <div class="path-label">
-              <el-icon><FolderOpened /></el-icon>
-              <span>源路径</span>
-            </div>
-            <div class="path-control">
-              <el-input v-model="sourcePath" placeholder="选择源文件夹路径" readonly>
-                <template #append>
-                  <el-button @click="openDialog">
-                    <el-icon><Folder /></el-icon>
-                  </el-button>
-                </template>
-              </el-input>
-            </div>
-          </div>
+  <div class="file-rename">
+    <el-card>
+      <template #header>
+        <div class="card-header">
+          <h2>文件批量重命名</h2>
         </div>
-      </el-card>
+      </template>
 
-      <el-card class="panel-card">
-        <template #header>
-          <div class="card-header">
-            <span>重命名设置</span>
-          </div>
-        </template>
+      <div class="rename-form">
+        <el-form :model="formData" label-width="100px">
+          <!-- 源路径选择 -->
+          <el-form-item label="源路径">
+            <path-selector
+              v-model="sourcePath"
+              placeholder="选择源文件夹路径"
+              category="file-rename"
+              :multiple="true"
+              @select="handlePathSelect"
+            />
+          </el-form-item>
 
-        <div class="rename-settings">
-          <div class="search-replace-group">
-            <div class="input-label">搜索文本</div>
-            <el-input v-model="searchText" placeholder="输入要替换的文本">
-              <template #prefix>
-                <el-icon><Search /></el-icon>
-              </template>
-            </el-input>
-          </div>
+          <!-- 重命名设置 -->
+          <el-form-item label="搜索文本">
+            <el-input 
+              v-model="searchText" 
+              placeholder="输入要替换的文本"
+            />
+          </el-form-item>
 
-          <div class="search-replace-group">
-            <div class="input-label">替换文本</div>
-            <el-input v-model="replaceText" placeholder="输入替换后的文本">
-              <template #prefix>
-                <el-icon><Edit /></el-icon>
-              </template>
-            </el-input>
-          </div>
+          <el-form-item label="替换文本">
+            <el-input 
+              v-model="replaceText" 
+              placeholder="输入替换后的文本"
+            />
+          </el-form-item>
 
-          <div class="search-options">
-            <el-checkbox v-model="ignoreCase" label="忽略大小写匹配" />
-          </div>
+          <!-- 高级选项 -->
+          <el-form-item>
+            <el-collapse>
+              <el-collapse-item title="高级选项" name="advanced">
+                <el-form-item label="大小写转换">
+                  <el-select v-model="caseConversion" placeholder="选择大小写转换方式" style="width: 100%">
+                    <el-option label="不转换" value="none" />
+                    <el-option label="转大写" value="uppercase" />
+                    <el-option label="转小写" value="lowercase" />
+                  </el-select>
+                </el-form-item>
+                
+                <el-form-item label="忽略大小写">
+                  <el-switch v-model="ignoreCase" />
+                  <span class="option-hint">
+                    (匹配时忽略大小写)
+                  </span>
+                </el-form-item>
+                
+                <el-form-item label="文件类型">
+                  <el-select
+                    v-model="fileExtensions"
+                    multiple
+                    collapse-tags
+                    collapse-tags-tooltip
+                    placeholder="选择文件类型"
+                    style="width: 100%"
+                  >
+                    <el-option-group
+                      v-for="category in fileCategories"
+                      :key="category"
+                      :label="getCategoryLabel(category)"
+                    >
+                      <el-option
+                        v-for="type in getFileTypesByCategory(category)"
+                        :key="type.id"
+                        :label="type.name"
+                        :value="type.id"
+                      >
+                        <span>{{ type.name }}</span>
+                        <small style="color: #8c8c8c">
+                          ({{ type.extensions.join(', ') }})
+                        </small>
+                      </el-option>
+                    </el-option-group>
+                  </el-select>
+                </el-form-item>
+              </el-collapse-item>
+            </el-collapse>
+          </el-form-item>
 
-          <div class="search-replace-group">
-            <div class="input-label">大小写转换</div>
-            <el-select v-model="caseConversion" placeholder="选择大小写转换方式" style="width: 100%">
-              <el-option label="不转换" value="none" />
-              <el-option label="转大写" value="uppercase" />
-              <el-option label="转小写" value="lowercase" />
-            </el-select>
-          </div>
-
-          <div class="filter-controls">
-            <div class="input-label">文件类型过滤</div>
-            <el-select
-              v-model="fileExtensions"
-              multiple
-              collapse-tags
-              collapse-tags-tooltip
-              placeholder="选择文件类型"
-              style="width: 100%"
+          <!-- 操作按钮 -->
+          <el-form-item>
+            <el-button
+              type="primary"
+              :disabled="!sourcePath"
+              @click="searchFiles"
             >
-              <el-option
-                v-for="item in fileTypeOptions"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
-              />
-            </el-select>
-          </div>
+              查询文件
+            </el-button>
+            <el-button
+              type="success"
+              :disabled="(!searchText && caseConversion === 'none') || selectedFiles.length === 0"
+              @click="renameSelectedFiles"
+            >
+              批量重命名
+            </el-button>
+          </el-form-item>
+        </el-form>
+      </div>
+
+      <!-- 文件列表 -->
+      <div v-if="tableData.length > 0" class="file-list-section">
+        <h3>文件列表</h3>
+        <div class="list-header">
+          <el-tag type="info" v-if="tableData.length > 0">
+            找到 {{ tableData.length }} 个文件
+          </el-tag>
+          <el-tag type="success" v-if="selectedFiles.length > 0">
+            已选择 {{ selectedFiles.length }} 个文件
+          </el-tag>
         </div>
-
-        <div class="action-buttons">
-          <el-button type="primary" @click="searchFiles" :disabled="!sourcePath">
-            <el-icon><Search /></el-icon>
-            <span>查询文件</span>
-          </el-button>
-
-          <el-button
-            type="success"
-            @click="renameSelectedFiles"
-            :disabled="(!searchText && caseConversion === 'none') || selectedFiles.length === 0"
-          >
-            <el-icon><Edit /></el-icon>
-            <span>批量重命名</span>
-          </el-button>
-        </div>
-      </el-card>
-    </div>
-
-    <!-- 文件列表 -->
-    <div class="file-list-panel">
-      <el-card class="list-card">
-        <template #header>
-          <div class="card-header">
-            <span>文件列表</span>
-            <div class="header-actions">
-              <el-tag type="info" v-if="tableData.length > 0">
-                找到 {{ tableData.length }} 个文件
-              </el-tag>
-              <el-tag type="success" v-if="selectedFiles.length > 0">
-                已选择 {{ selectedFiles.length }} 个文件
-              </el-tag>
-            </div>
-          </div>
-        </template>
-
-        <el-empty v-if="tableData.length === 0" description="暂无数据，请先执行查询" />
 
         <el-table
-          v-else
           :data="tableData"
           class="file-table"
-          height="100%"
+          height="300px"
           stripe
           @selection-change="handleSelectionChange"
         >
@@ -147,47 +140,54 @@
                 size="small"
                 @click="renameFile(scope.row)"
                 :disabled="!searchText && caseConversion === 'none'"
-                >重命名</el-button
-              >
+              >重命名</el-button>
             </template>
           </el-table-column>
         </el-table>
-      </el-card>
-    </div>
-
-    <!-- 路径选择对话框 -->
-    <path-selector-dialog
-      v-model:visible="dialogVisible"
-      v-model:selected-path="dialogPath"
-      @confirm="confirmDirectory"
-    />
+      </div>
+    </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { FolderOpened, Folder, Search, Edit } from '@element-plus/icons-vue'
 import { FileWithFullPath } from '../../../types/file-types'
-import PathSelectorDialog from './common/PathSelectorDialog.vue'
+import PathSelector from './common/PathSelector.vue'
 import { useFileTypes } from '../composables/useFileTypes'
+
+// 添加空的formData对象以兼容模板中的绑定
+const formData = {}
 
 const sourcePath = ref('')
 const searchText = ref('')
 const replaceText = ref('')
-const dialogVisible = ref(false)
-const dialogPath = ref('')
 const tableData = ref<FileWithFullPath[]>([])
 const selectedFiles = ref<FileWithFullPath[]>([])
 const ignoreCase = ref(false)
 const caseConversion = ref('none')
 
-const { fileExtensions, fileTypeOptions } = useFileTypes()
+// 获取文件类型选项数据
+const { 
+  fileExtensions, 
+  fileCategories, 
+  getCategoryLabel, 
+  getFileTypesByCategory
+} = useFileTypes()
 
-// 打开路径选择对话框
-const openDialog = () => {
-  dialogVisible.value = true
-  dialogPath.value = ''
+// 处理路径选择
+const handlePathSelect = (path: string | string[]) => {
+  if (Array.isArray(path)) {
+    // 处理多选模式
+    sourcePath.value = path.join(';')
+  } else {
+    sourcePath.value = path
+  }
+  
+  // 当选择源路径后自动触发查询
+  if (sourcePath.value && fileExtensions.value && fileExtensions.value.length > 0) {
+    searchFiles()
+  }
 }
 
 // 搜索文件
@@ -198,7 +198,7 @@ const searchFiles = async () => {
       return
     }
 
-    if (fileExtensions.value.length === 0) {
+    if (!fileExtensions.value || fileExtensions.value.length === 0) {
       ElMessage.warning('请选择至少一种文件类型')
       return
     }
@@ -206,7 +206,8 @@ const searchFiles = async () => {
     tableData.value = []
     ElMessage.info('正在搜索文件，请稍候...')
 
-    const extensions = fileExtensions.value.map((ext) => ext.trim())
+    // 获取文件扩展名模式
+    const extensions = fileExtensions.value
     tableData.value = await window.api.searchFiles(sourcePath.value, extensions)
 
     if (tableData.value.length === 0) {
@@ -279,6 +280,7 @@ const renameFile = async (file: FileWithFullPath) => {
     ElMessage.error(`重命名文件时出错: ${err.message}`)
   }
 }
+
 // 批量重命名选中文件
 const renameSelectedFiles = async () => {
   if (selectedFiles.value.length === 0) {
@@ -332,112 +334,43 @@ const renameSelectedFiles = async () => {
 const handleSelectionChange = (selection: FileWithFullPath[]) => {
   selectedFiles.value = selection
 }
-
-// 确认目录选择
-const confirmDirectory = () => {
-  sourcePath.value = dialogPath.value
-  dialogVisible.value = false
-  
-  // 当选择源路径后自动触发查询
-  if (sourcePath.value && fileExtensions.value.length > 0) {
-    searchFiles()
-  }
-}
 </script>
 
 <style scoped>
-.file-rename-container {
-  height: 100%;
-  display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 15px;
-}
-
-.action-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.panel-card,
-.list-card {
-  height: auto;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
-}
-
-.list-card {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
+.file-rename {
+  padding: 1rem;
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-weight: 500;
 }
 
-.header-actions {
+.rename-form {
+  margin-bottom: 1.5rem;
+}
+
+.option-hint {
+  margin-left: 0.5rem;
+  color: var(--el-text-color-secondary);
+  font-size: 0.9em;
+}
+
+.file-list-section {
+  margin: 1rem 0;
+  border: 1px solid var(--el-border-color);
+  border-radius: 4px;
+  padding: 1rem;
+}
+
+.list-header {
   display: flex;
-  gap: 6px;
-}
-
-.path-inputs,
-.rename-settings {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.path-group,
-.search-replace-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.path-label,
-.input-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--text-light);
-  font-size: 14px;
-}
-
-.filter-controls {
-  margin-top: 6px;
-}
-
-.action-buttons {
-  margin-top: 12px;
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.action-buttons .el-button {
-  flex: 1;
-}
-
-.file-list-panel {
-  overflow: hidden;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
 }
 
 .file-table {
-  margin-top: 6px;
-}
-
-:deep(.el-card__body) {
-  flex: 1;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  padding: 12px;
-}
-
-:deep(.el-table__body-wrapper) {
-  overflow-y: auto;
+  width: 100%;
 }
 </style>

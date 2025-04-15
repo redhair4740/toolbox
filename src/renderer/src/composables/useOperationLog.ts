@@ -1,83 +1,121 @@
 import { ref } from 'vue'
 
-// 操作类型
-export type OperationType = 'search' | 'move' | 'rename' | 'other'
-
-// 操作日志项
-export interface LogItem {
-  id: number
-  type: OperationType
+// 日志类型定义
+interface OperationLog {
+  time: number
+  category: string
+  type: 'info' | 'success' | 'warning' | 'error'
   message: string
-  timestamp: number
-  details?: string
 }
 
-/**
- * 操作日志管理组合式API
- * @param maxLogs 最大日志数量
- * @returns 日志相关方法和状态
- */
-export function useOperationLog(maxLogs = 100) {
-  const logs = ref<LogItem[]>([])
-  let nextId = 1
+// 最大日志条数
+const MAX_LOGS = 1000
 
-  /**
-   * 添加日志
-   * @param type 操作类型
-   * @param message 日志消息
-   * @param details 详细信息
-   */
-  const addLog = (type: OperationType, message: string, details?: string) => {
-    const log: LogItem = {
-      id: nextId++,
+// 创建一个全局的日志存储
+const logs = ref<OperationLog[]>([])
+
+export function useOperationLog() {
+  // 添加日志
+  const addLog = (
+    category: string,
+    message: string,
+    type: OperationLog['type'] = 'info'
+  ) => {
+    const log: OperationLog = {
+      time: Date.now(),
+      category,
       type,
-      message,
-      timestamp: Date.now(),
-      details
+      message
     }
-    
+
     logs.value.unshift(log)
-    
-    // 保持最大数量
-    if (logs.value.length > maxLogs) {
-      logs.value = logs.value.slice(0, maxLogs)
+
+    // 限制日志数量
+    if (logs.value.length > MAX_LOGS) {
+      logs.value = logs.value.slice(0, MAX_LOGS)
     }
-    
-    return log.id
+
+    // 保存到本地存储
+    saveLogsToStorage()
   }
 
-  /**
-   * 清空日志
-   */
-  const clearLogs = () => {
+  // 清空所有日志
+  const clearAllLogs = () => {
     logs.value = []
+    saveLogsToStorage()
   }
 
-  /**
-   * 获取格式化的时间
-   * @param timestamp 时间戳
-   * @returns 格式化的时间字符串
-   */
-  const formatTime = (timestamp: number) => {
-    const date = new Date(timestamp)
-    return date.toLocaleString()
+  // 清空特定分类的日志
+  const clearCategoryLogs = (category: string) => {
+    logs.value = logs.value.filter(log => log.category !== category)
+    saveLogsToStorage()
   }
 
-  /**
-   * 导出日志为文本
-   * @returns 日志文本
-   */
+  // 获取特定分类的日志
+  const getCategoryLogs = (category: string) => {
+    return logs.value.filter(log => log.category === category)
+  }
+
+  // 获取特定类型的日志
+  const getLogsByType = (type: OperationLog['type']) => {
+    return logs.value.filter(log => log.type === type)
+  }
+
+  // 获取日志统计信息
+  const getLogStats = () => {
+    return {
+      total: logs.value.length,
+      info: logs.value.filter(log => log.type === 'info').length,
+      success: logs.value.filter(log => log.type === 'success').length,
+      warning: logs.value.filter(log => log.type === 'warning').length,
+      error: logs.value.filter(log => log.type === 'error').length
+    }
+  }
+
+  // 导出日志
   const exportLogs = () => {
-    return logs.value
-      .map(log => `[${formatTime(log.timestamp)}] [${log.type}] ${log.message}${log.details ? `\n  ${log.details}` : ''}`)
-      .join('\n\n')
+    const exportData = logs.value.map(log => ({
+      time: new Date(log.time).toISOString(),
+      category: log.category,
+      type: log.type,
+      message: log.message
+    }))
+
+    return JSON.stringify(exportData, null, 2)
   }
+
+  // 保存日志到本地存储
+  const saveLogsToStorage = () => {
+    try {
+      localStorage.setItem('operation_logs', JSON.stringify(logs.value))
+    } catch (error) {
+      console.error('Failed to save logs to storage:', error)
+    }
+  }
+
+  // 从本地存储加载日志
+  const loadLogsFromStorage = () => {
+    try {
+      const savedLogs = localStorage.getItem('operation_logs')
+      if (savedLogs) {
+        logs.value = JSON.parse(savedLogs)
+      }
+    } catch (error) {
+      console.error('Failed to load logs from storage:', error)
+    }
+  }
+
+  // 初始化时加载日志
+  loadLogsFromStorage()
 
   return {
     logs,
     addLog,
-    clearLogs,
-    formatTime,
+    clearAllLogs,
+    clearCategoryLogs,
+    getCategoryLogs,
+    getLogsByType,
+    getLogStats,
     exportLogs
   }
-} 
+}
