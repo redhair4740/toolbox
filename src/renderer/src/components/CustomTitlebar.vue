@@ -41,9 +41,9 @@ const symbolColor = computed(() => isCurrentlyDark.value ? '#e0e0e0' : '#303133'
 let removeStateChangeListener: (() => void) | null = null
 
 onMounted(() => {
-  if (window.titlebarAPI) {
+  if ((window as any).titlebarAPI) {
     // 监听主进程发送的窗口状态变化
-    removeStateChangeListener = window.titlebarAPI.onWindowStateChange((maximized) => {
+    removeStateChangeListener = (window as any).titlebarAPI.onWindowStateChange((maximized: boolean) => {
       isMaximized.value = maximized
     })
   }
@@ -57,15 +57,15 @@ onUnmounted(() => {
 })
 
 const minimizeWindow = () => {
-  window.titlebarAPI?.sendMinimize()
+  (window as any).titlebarAPI?.sendMinimize()
 }
 
 const maximizeRestoreWindow = () => {
-  window.titlebarAPI?.sendMaximizeRestore()
+  (window as any).titlebarAPI?.sendMaximizeRestore()
 }
 
 const closeWindow = () => {
-  window.titlebarAPI?.sendClose()
+  (window as any).titlebarAPI?.sendClose()
 }
 </script>
 

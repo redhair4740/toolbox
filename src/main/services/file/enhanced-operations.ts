@@ -1,12 +1,11 @@
 import * as fs from 'fs'
 import path from 'path'
-import { FileOperationError, withRetry } from '../../utils/error-handler'
+import { FileOperationError } from '../../utils/error-handler'
 import { ConcurrencyController } from '../../utils/concurrency'
 import { withRetry } from '../../utils/retry'
 import { ProgressTracker } from '../../utils/progress'
 import { WorkerPool } from '../../utils/worker-pool'
 import { getConfig } from '../../config/app-config'
-import { shouldUseStreaming, processFileStream, createLineProcessor } from '../../utils/file-stream'
 
 /**
  * 增强的文件操作服务
@@ -46,11 +45,11 @@ export class EnhancedFileOperations {
       })
     `
     
-    const scriptPath = await import('../../utils/worker-pool').then(
-      ({ createWorkerScript }) => createWorkerScript(workerScript)
-    )
+    // 创建一个临时脚本文件用于worker
+    const tempScript = path.join(__dirname, `worker-${Date.now()}.js`)
+    await fs.promises.writeFile(tempScript, workerScript)
     
-    this.workerPool = new WorkerPool(scriptPath)
+    this.workerPool = new WorkerPool(tempScript)
   }
   
   /**
@@ -107,10 +106,13 @@ export class EnhancedFileOperations {
   async batchMoveFiles(
     files: { source: string; fileName: string }[],
     destination: string,
-    onProgress?: (info: any) => void
+    onProgress?: (info: { processed: number; total: number }) => void
   ): Promise<{ success: number; failed: number; errors: string[] }> {
     const config = getConfig()
-    const tracker = new ProgressTracker(files.length, onProgress || (() => {}))
+    const tracker = new ProgressTracker(files.length)
+    tracker.start() // 启动跟踪器
+    let processedCount = 0
+    const totalCount = files.length
     const errors: string[] = []
     
     try {
@@ -130,7 +132,14 @@ export class EnhancedFileOperations {
       const tasks = files.map(file => async () => {
         try {
           await this.moveFile(file.source, destination, file.fileName)
-          tracker.update(file.source)
+          tracker.update(1) // 更新进度
+          processedCount++
+          if (onProgress) {
+            onProgress({ 
+              processed: processedCount, 
+              total: totalCount 
+            })
+          }
           return { success: true }
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error)
@@ -163,7 +172,7 @@ export class EnhancedFileOperations {
     } finally {
       // 关闭工作线程池
       if (this.workerPool) {
-        await this.workerPool.shutdown()
+        await this.workerPool.terminate()
         this.workerPool = null
       }
     }
@@ -221,7 +230,7 @@ export class EnhancedFileOperations {
    */
   async cleanup(): Promise<void> {
     if (this.workerPool) {
-      await this.workerPool.shutdown()
+      await this.workerPool.terminate()
       this.workerPool = null
     }
   }

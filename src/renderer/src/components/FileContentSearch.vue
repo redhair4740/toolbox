@@ -418,7 +418,12 @@ const startSearch = async () => {
     
     // 执行搜索
     const results = await api.searchInFiles(
-      files, 
+      files.map(file => ({
+        name: file.fileName || '',
+        path: file.fullPath || '',
+        size: 0,
+        isDirectory: false
+      })), 
       searchOptions.content, 
       !searchOptions.caseSensitive
     )
@@ -450,13 +455,14 @@ const startSearch = async () => {
 
 // 取消搜索
 const cancelSearch = async () => {
+  addLog('search', '正在取消搜索...', 'warning')
   try {
-    // 发送取消搜索的请求
+    // 取消搜索操作
     await api.cancelSearch()
-    addLog('search', '搜索已取消', 'warning')
-    ElMessage.warning('搜索已取消')
+    addLog('search', '搜索已取消', 'success')
   } catch (error) {
-    addLog('search', `取消搜索失败: ${error.message}`, 'error')
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    addLog('search', `取消搜索失败: ${errorMessage}`, 'error')
   } finally {
     isSearching.value = false
   }
@@ -465,39 +471,19 @@ const cancelSearch = async () => {
 // 导出结果
 const exportResults = async () => {
   try {
-    // 准备导出内容
-    const content = filteredResults.value.map(result => {
-      const matches = result.matches.map(match =>
-        `  行 ${match.line}: ${match.content}`
-      ).join('\n')
-      
-      return `文件: ${result.filePath}\n${matches}\n`
-    }).join('\n')
-
-    // 生成文件名
-    const now = new Date()
-    const fileName = `search_results_${now.getFullYear()}-${
-      String(now.getMonth() + 1).padStart(2, '0')
-    }-${
-      String(now.getDate()).padStart(2, '0')
-    }_${
-      String(now.getHours()).padStart(2, '0')
-    }-${
-      String(now.getMinutes()).padStart(2, '0')
-    }.txt`
-
-    // 保存文件
-    await api.saveTextFile({
-      content,
-      fileName,
-      title: '保存搜索结果'
+    // 导出搜索结果
+    await api.exportSearchResults({
+      results: searchResults.value,
+      format: 'text',
+      includeContext: true
     })
     
-    addLog('search', '搜索结果已导出', 'success')
-    ElMessage.success('搜索结果已导出')
+    addLog('search', '搜索结果导出成功', 'success')
+    ElMessage.success('导出成功')
   } catch (error) {
-    addLog('search', `导出结果失败: ${error.message}`, 'error')
-    ElMessage.error('导出结果失败')
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    addLog('search', `导出结果失败: ${errorMessage}`, 'error')
+    ElMessage.error('导出失败')
   }
 }
 </script>

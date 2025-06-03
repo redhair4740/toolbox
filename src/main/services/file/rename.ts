@@ -86,14 +86,14 @@ export class FileRenameManager extends EventEmitter {
             name: file.name,
             newName: file.name,
             hasError: true,
-            errorMessage: error.message
+            errorMessage: error instanceof Error ? error.message : String(error)
           })
         }
       }
 
       return results
     } catch (error) {
-      throw handleError('Failed to preview rename', error)
+      throw handleError(error, 'Failed to preview rename')
     }
   }
 
@@ -125,7 +125,12 @@ export class FileRenameManager extends EventEmitter {
       current++
       
       if (progressCallback) {
-        progressCallback(current, total, file.path)
+        progressCallback({
+          current: current,
+          total: total,
+          percentage: Math.floor((current / total) * 100),
+          details: { path: file.path }
+        })
       }
 
       try {
@@ -183,7 +188,11 @@ export class FileRenameManager extends EventEmitter {
     
     switch (options.mode) {
       case 'replace':
-        return this.replaceText(name, nameWithoutExt, ext, options)
+        return this.replaceText(name, nameWithoutExt, ext, {
+          find: options.find || '',
+          replace: options.replace || '',
+          caseSensitive: options.caseSensitive || false
+        })
       
       case 'prefix':
         return `${options.prefix}${name}`
@@ -196,16 +205,31 @@ export class FileRenameManager extends EventEmitter {
         }
       
       case 'template':
-        return this.applyTemplate(file, nameWithoutExt, ext, options)
+        return this.applyTemplate(file, nameWithoutExt, ext, {
+          template: options.template || '{name}'
+        })
       
       case 'sequence':
-        return this.applySequence(file, nameWithoutExt, ext, options)
+        return this.applySequence(file, nameWithoutExt, ext, {
+          baseName: options.baseName || '',
+          startNumber: options.startNumber || 1,
+          padding: options.padding || 1,
+          keepExt: options.keepExt !== false
+        })
       
       case 'case':
-        return this.changeCase(name, nameWithoutExt, ext, options)
+        return this.changeCase(name, nameWithoutExt, ext, {
+          caseType: options.caseType || 'lower',
+          caseExtension: options.caseExtension || false
+        })
       
       case 'regex':
-        return this.applyRegex(name, options)
+        return this.applyRegex(name, {
+          regex: options.regex || '',
+          regexReplace: options.regexReplace || '',
+          regexGlobal: options.regexGlobal !== false,
+          regexCaseSensitive: options.regexCaseSensitive || false
+        })
       
       default:
         return name
@@ -349,10 +373,11 @@ export class FileRenameManager extends EventEmitter {
     
     try {
       const flags = `${regexGlobal ? 'g' : ''}${regexCaseSensitive ? '' : 'i'}`
-      const re = new RegExp(regex, flags)
-      return name.replace(re, regexReplace)
+      const regexObj = new RegExp(regex, flags)
+      return name.replace(regexObj, regexReplace)
     } catch (error) {
-      throw new Error(`Invalid regular expression: ${error.message}`)
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      throw new Error(`Invalid regular expression: ${errorMessage}`)
     }
   }
 

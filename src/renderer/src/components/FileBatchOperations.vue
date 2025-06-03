@@ -219,7 +219,7 @@ const {
 } = useFileTypes()
 
 // 文件服务接口
-const fileService = window.electron.fileService
+const fileService = (window as any).electron.fileService
 
 // 表单数据
 const formData = reactive({
@@ -313,7 +313,8 @@ const loadSourceFiles = async (path: string | string[]) => {
     
     addLog(`找到 ${sourceFiles.value.length} 个文件`, 'success')
   } catch (error) {
-    addLog(`扫描文件失败: ${error.message}`, 'error')
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    addLog(`扫描文件失败: ${errorMessage}`, 'error')
     ElMessage.error('扫描文件失败')
   }
 }
@@ -383,8 +384,9 @@ const startOperation = async () => {
     // 重新加载源文件列表
     loadSourceFiles(formData.sourcePath)
   } catch (error) {
-    addLog(`操作失败: ${error.message}`, 'error')
-    ElMessage.error(`操作失败: ${error.message}`)
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    addLog(`操作失败: ${errorMessage}`, 'error')
+    ElMessage.error(`操作失败: ${errorMessage}`)
   } finally {
     isProcessing.value = false
   }
@@ -397,7 +399,8 @@ const cancelOperation = async () => {
     addLog('操作已取消', 'warning')
     ElMessage.warning('操作已取消')
   } catch (error) {
-    addLog(`取消操作失败: ${error.message}`, 'error')
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    addLog(`取消操作失败: ${errorMessage}`, 'error')
   } finally {
     isProcessing.value = false
   }

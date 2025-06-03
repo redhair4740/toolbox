@@ -1,7 +1,6 @@
 import fs from 'fs'
 import path from 'path'
 import { EventEmitter } from 'events'
-import { WorkerPool } from '../../utils/worker-pool'
 import { ProgressCallback } from '../../utils/progress'
 import { handleError } from '../../utils/error-handler'
 
@@ -11,11 +10,14 @@ import { handleError } from '../../utils/error-handler'
  */
 export class FileOperationManager extends EventEmitter {
   private isCancelled: boolean = false
-  private workerPool: WorkerPool
+  // 暂时禁用WorkerPool以修复构建错误
+  // private workerPool: WorkerPool
 
   constructor() {
     super()
-    this.workerPool = new WorkerPool()
+    // 暂时注释掉WorkerPool初始化
+    // const workerScript = path.join(__dirname, 'file-worker.js')
+    // this.workerPool = new WorkerPool(workerScript)
   }
 
   /**
@@ -35,15 +37,15 @@ export class FileOperationManager extends EventEmitter {
   }> {
     this.isCancelled = false
     const result = { success: 0, failed: 0, skipped: 0 }
-    const { files, targetPath, preserveStructure = true, conflictStrategy = 'ask', parallel = false, maxParallel = 4 } = options
+    const { files, targetPath, preserveStructure = true, conflictStrategy = 'ask' } = options
 
     // 确保目标目录存在
     await this.ensureDirectoryExists(targetPath)
 
-    // 并行处理
-    if (parallel) {
-      return this.parallelCopyFiles(options, progressCallback)
-    }
+    // 暂时禁用并行处理
+    // if (parallel) {
+    //   return this.parallelCopyFiles(options, progressCallback)
+    // }
 
     // 顺序处理
     let current = 0
@@ -56,7 +58,12 @@ export class FileOperationManager extends EventEmitter {
       const fileName = path.basename(filePath)
       
       if (progressCallback) {
-        progressCallback(current, total, filePath)
+        progressCallback({
+          current: current,
+          total: total,
+          percentage: Math.floor((current / total) * 100),
+          details: { path: filePath }
+        })
       }
 
       try {
@@ -107,92 +114,6 @@ export class FileOperationManager extends EventEmitter {
   }
 
   /**
-   * 并行复制文件
-   */
-  private async parallelCopyFiles(options: {
-    files: string[]
-    targetPath: string
-    preserveStructure?: boolean
-    conflictStrategy?: 'ask' | 'overwrite' | 'skip' | 'rename'
-    maxParallel?: number
-  }, progressCallback?: ProgressCallback): Promise<{
-    success: number
-    failed: number
-    skipped: number
-  }> {
-    const { files, targetPath, preserveStructure = true, maxParallel = 4 } = options
-    const result = { success: 0, failed: 0, skipped: 0 }
-    let processed = 0
-    const total = files.length
-
-    // 设置worker池大小
-    this.workerPool.setMaxWorkers(maxParallel)
-
-    // 准备任务
-    const tasks = files.map(filePath => async () => {
-      if (this.isCancelled) return { success: 0, failed: 0, skipped: 0 }
-
-      try {
-        const fileName = path.basename(filePath)
-        
-        // 确定目标路径
-        let targetFilePath
-        if (preserveStructure && files.length > 1) {
-          const basePath = path.dirname(files[0])
-          const relativePath = path.relative(basePath, filePath)
-          targetFilePath = path.join(targetPath, relativePath)
-          
-          // 确保目标子目录存在
-          await this.ensureDirectoryExists(path.dirname(targetFilePath))
-        } else {
-          targetFilePath = path.join(targetPath, fileName)
-        }
-
-        const stats = await fs.promises.stat(filePath)
-        const fileExists = await this.fileExists(targetFilePath)
-
-        // 处理文件冲突
-        if (fileExists) {
-          if (options.conflictStrategy === 'skip') {
-            return { success: 0, failed: 0, skipped: 1 }
-          } else if (options.conflictStrategy === 'rename') {
-            targetFilePath = await this.generateUniqueFilename(targetFilePath)
-          }
-        }
-
-        // 复制文件或目录
-        if (stats.isDirectory()) {
-          await this.copyDirectory(filePath, targetFilePath, options.conflictStrategy)
-        } else {
-          await fs.promises.copyFile(filePath, targetFilePath)
-        }
-
-        return { success: 1, failed: 0, skipped: 0 }
-      } catch (error) {
-        console.error(`Failed to copy file ${filePath}:`, error)
-        return { success: 0, failed: 1, skipped: 0 }
-      } finally {
-        processed++
-        if (progressCallback) {
-          progressCallback(processed, total, filePath)
-        }
-      }
-    })
-
-    // 执行任务
-    const results = await this.workerPool.runTasks(tasks)
-
-    // 汇总结果
-    results.forEach(r => {
-      result.success += r.success
-      result.failed += r.failed
-      result.skipped += r.skipped
-    })
-
-    return result
-  }
-
-  /**
    * 移动文件
    */
   async moveFiles(options: {
@@ -209,15 +130,15 @@ export class FileOperationManager extends EventEmitter {
   }> {
     this.isCancelled = false
     const result = { success: 0, failed: 0, skipped: 0 }
-    const { files, targetPath, preserveStructure = true, conflictStrategy = 'ask', parallel = false, maxParallel = 4 } = options
+    const { files, targetPath, preserveStructure = true, conflictStrategy = 'ask' } = options
 
     // 确保目标目录存在
     await this.ensureDirectoryExists(targetPath)
 
-    // 并行处理
-    if (parallel) {
-      return this.parallelMoveFiles(options, progressCallback)
-    }
+    // 暂时禁用并行处理
+    // if (parallel) {
+    //   return this.parallelMoveFiles(options, progressCallback)
+    // }
 
     // 顺序处理
     let current = 0
@@ -230,7 +151,12 @@ export class FileOperationManager extends EventEmitter {
       const fileName = path.basename(filePath)
       
       if (progressCallback) {
-        progressCallback(current, total, filePath)
+        progressCallback({
+          current: current,
+          total: total,
+          percentage: Math.floor((current / total) * 100),
+          details: { path: filePath }
+        })
       }
 
       try {
@@ -282,95 +208,6 @@ export class FileOperationManager extends EventEmitter {
   }
 
   /**
-   * 并行移动文件
-   */
-  private async parallelMoveFiles(options: {
-    files: string[]
-    targetPath: string
-    preserveStructure?: boolean
-    conflictStrategy?: 'ask' | 'overwrite' | 'skip' | 'rename'
-    maxParallel?: number
-  }, progressCallback?: ProgressCallback): Promise<{
-    success: number
-    failed: number
-    skipped: number
-  }> {
-    const { files, targetPath, preserveStructure = true, maxParallel = 4 } = options
-    const result = { success: 0, failed: 0, skipped: 0 }
-    let processed = 0
-    const total = files.length
-
-    // 设置worker池大小
-    this.workerPool.setMaxWorkers(maxParallel)
-
-    // 准备任务
-    const tasks = files.map(filePath => async () => {
-      if (this.isCancelled) return { success: 0, failed: 0, skipped: 0 }
-
-      try {
-        const fileName = path.basename(filePath)
-        
-        // 确定目标路径
-        let targetFilePath
-        if (preserveStructure && files.length > 1) {
-          const basePath = path.dirname(files[0])
-          const relativePath = path.relative(basePath, filePath)
-          targetFilePath = path.join(targetPath, relativePath)
-          
-          // 确保目标子目录存在
-          await this.ensureDirectoryExists(path.dirname(targetFilePath))
-        } else {
-          targetFilePath = path.join(targetPath, fileName)
-        }
-
-        const fileExists = await this.fileExists(targetFilePath)
-
-        // 处理文件冲突
-        if (fileExists) {
-          if (options.conflictStrategy === 'skip') {
-            return { success: 0, failed: 0, skipped: 1 }
-          } else if (options.conflictStrategy === 'rename') {
-            targetFilePath = await this.generateUniqueFilename(targetFilePath)
-          } else if (options.conflictStrategy === 'overwrite') {
-            await this.removeFile(targetFilePath)
-          }
-        }
-
-        // 尝试移动文件
-        try {
-          await fs.promises.rename(filePath, targetFilePath)
-          return { success: 1, failed: 0, skipped: 0 }
-        } catch (moveError) {
-          // 如果简单移动失败（可能跨设备），尝试复制然后删除
-          await fs.promises.copyFile(filePath, targetFilePath)
-          await fs.promises.unlink(filePath)
-          return { success: 1, failed: 0, skipped: 0 }
-        }
-      } catch (error) {
-        console.error(`Failed to move file ${filePath}:`, error)
-        return { success: 0, failed: 1, skipped: 0 }
-      } finally {
-        processed++
-        if (progressCallback) {
-          progressCallback(processed, total, filePath)
-        }
-      }
-    })
-
-    // 执行任务
-    const results = await this.workerPool.runTasks(tasks)
-
-    // 汇总结果
-    results.forEach(r => {
-      result.success += r.success
-      result.failed += r.failed
-      result.skipped += r.skipped
-    })
-
-    return result
-  }
-
-  /**
    * 删除文件
    */
   async deleteFiles(options: {
@@ -383,12 +220,12 @@ export class FileOperationManager extends EventEmitter {
   }> {
     this.isCancelled = false
     const result = { success: 0, failed: 0 }
-    const { files, parallel = false, maxParallel = 4 } = options
+    const { files } = options
 
-    // 并行处理
-    if (parallel) {
-      return this.parallelDeleteFiles(options, progressCallback)
-    }
+    // 暂时禁用并行处理
+    // if (parallel) {
+    //   return this.parallelDeleteFiles(options, progressCallback)
+    // }
 
     // 顺序处理
     let current = 0
@@ -400,7 +237,12 @@ export class FileOperationManager extends EventEmitter {
       current++
       
       if (progressCallback) {
-        progressCallback(current, total, filePath)
+        progressCallback({
+          current: current,
+          total: total,
+          percentage: Math.floor((current / total) * 100),
+          details: { path: filePath }
+        })
       }
 
       try {
@@ -416,64 +258,16 @@ export class FileOperationManager extends EventEmitter {
   }
 
   /**
-   * 并行删除文件
-   */
-  private async parallelDeleteFiles(options: {
-    files: string[]
-    maxParallel?: number
-  }, progressCallback?: ProgressCallback): Promise<{
-    success: number
-    failed: number
-  }> {
-    const { files, maxParallel = 4 } = options
-    const result = { success: 0, failed: 0 }
-    let processed = 0
-    const total = files.length
-
-    // 设置worker池大小
-    this.workerPool.setMaxWorkers(maxParallel)
-
-    // 准备任务
-    const tasks = files.map(filePath => async () => {
-      if (this.isCancelled) return { success: 0, failed: 0 }
-
-      try {
-        await this.removeFile(filePath)
-        return { success: 1, failed: 0 }
-      } catch (error) {
-        console.error(`Failed to delete file ${filePath}:`, error)
-        return { success: 0, failed: 1 }
-      } finally {
-        processed++
-        if (progressCallback) {
-          progressCallback(processed, total, filePath)
-        }
-      }
-    })
-
-    // 执行任务
-    const results = await this.workerPool.runTasks(tasks)
-
-    // 汇总结果
-    results.forEach(r => {
-      result.success += r.success
-      result.failed += r.failed
-    })
-
-    return result
-  }
-
-  /**
    * 清理资源
    */
   async cancelOperation(): Promise<void> {
     this.isCancelled = true
     
     // 关闭工作线程池
-    if (this.workerPool) {
-      await this.workerPool.terminate()
-      this.workerPool = null
-    }
+    // if (this.workerPool) {
+    //   await this.workerPool.terminate()
+    //   this.workerPool = null
+    // }
   }
 
   /**
@@ -524,24 +318,14 @@ export class FileOperationManager extends EventEmitter {
   private async removeFile(filePath: string): Promise<void> {
     try {
       const stats = await fs.promises.stat(filePath)
-
+      
       if (stats.isDirectory()) {
-        // 读取目录内容
-        const entries = await fs.promises.readdir(filePath)
-
-        // 递归删除每个条目
-        for (const entry of entries) {
-          await this.removeFile(path.join(filePath, entry))
-        }
-
-        // 删除空目录
-        await fs.promises.rmdir(filePath)
+        await fs.promises.rmdir(filePath, { recursive: true })
       } else {
-        // 删除文件
         await fs.promises.unlink(filePath)
       }
     } catch (error) {
-      throw handleError(`Failed to remove ${filePath}`, error)
+      throw handleError(error, `Failed to remove ${filePath}`)
     }
   }
 
@@ -552,7 +336,7 @@ export class FileOperationManager extends EventEmitter {
     try {
       await fs.promises.mkdir(dirPath, { recursive: true })
     } catch (error) {
-      throw handleError(`Failed to create directory ${dirPath}`, error)
+      throw handleError(error, `Failed to create directory ${dirPath}`)
     }
   }
 

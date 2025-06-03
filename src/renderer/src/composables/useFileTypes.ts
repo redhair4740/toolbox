@@ -86,6 +86,9 @@ export function useFileTypes() {
   // 获取所有文件类型分类
   const fileCategories = ref([...new Set(fileTypes.map(type => type.category))])
 
+  // 获取所有文件扩展名
+  const fileExtensions = ref([...new Set(fileTypes.flatMap(type => type.extensions))])
+
   // 根据分类获取文件类型
   const getFileTypesByCategory = (category: string) => {
     return fileTypes.filter(type => type.category === category)
@@ -186,6 +189,7 @@ export function useFileTypes() {
   return {
     fileTypes,
     fileCategories,
+    fileExtensions,
     getAllFileTypes,
     getFileTypesByCategory,
     getFileTypeByExtension,

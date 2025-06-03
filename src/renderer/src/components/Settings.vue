@@ -424,14 +424,8 @@ const saveSettings = async () => {
   try {
     isSaving.value = true
     
-    // 保存设置
-    await save({
-      general: {...settings.general},
-      file: {...settings.file},
-      search: {...settings.search},
-      advanced: {...settings.advanced},
-      ui: {...settings.ui}
-    })
+    // 保存设置 - 注意save函数不需要参数，它会保存当前的settings状态
+    await save()
     
     // 应用主题
     updateTheme(settings.general.theme)

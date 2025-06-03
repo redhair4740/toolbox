@@ -222,6 +222,7 @@ export function useSettings() {
     updateSettings,
     resetCategorySettings,
     resetAllSettings,
+    resetSettings: resetAllSettings,
     saveSettings,
     exportSettings,
     importSettings

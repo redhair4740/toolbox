@@ -41,15 +41,17 @@ export class FileStream {
       let processedBytes = 0
       const fileSize = readStream.readableLength
 
-      readStream.on('data', (chunk: Buffer) => {
+      readStream.on('data', (chunk: any) => {
         processedBytes += chunk.length
         if (options.onProgress) {
           options.onProgress({
-            percent: (processedBytes / fileSize) * 100,
-            processed: processedBytes,
+            current: processedBytes,
             total: fileSize,
-            currentPath: sourcePath,
-            operation: 'COPY'
+            percentage: Math.floor((processedBytes / fileSize) * 100),
+            details: {
+              currentPath: sourcePath,
+              operation: 'COPY'
+            }
           })
         }
       })
@@ -70,7 +72,7 @@ export class FileStream {
    * @param options 选项
    * @returns 可读流
    */
-  static createReader(filePath: string, options: FileStreamOptions = {}) {
+  static createReader(filePath: string, options: { chunkSize?: number } = {}) {
     return createReadStream(filePath, {
       highWaterMark: options.chunkSize
     })
@@ -79,10 +81,9 @@ export class FileStream {
   /**
    * 创建可写流
    * @param filePath 文件路径
-   * @param options 选项
    * @returns 可写流
    */
-  static createWriter(filePath: string, options: FileStreamOptions = {}) {
+  static createWriter(filePath: string) {
     return createWriteStream(filePath)
   }
 
@@ -94,31 +95,33 @@ export class FileStream {
    */
   static async readContent(
     filePath: string,
-    callback: (chunk: Buffer) => void,
+    callback: (chunk: any) => void,
     options: FileStreamOptions = {}
   ): Promise<void> {
     try {
-      const readStream = this.createReader(filePath, options)
+      const readStream = this.createReader(filePath, { chunkSize: options.chunkSize })
       
       let processedBytes = 0
       const fileSize = readStream.readableLength
 
-      readStream.on('data', (chunk: Buffer) => {
+      readStream.on('data', (chunk: any) => {
         processedBytes += chunk.length
         if (options.onProgress) {
           options.onProgress({
-            percent: (processedBytes / fileSize) * 100,
-            processed: processedBytes,
+            current: processedBytes,
             total: fileSize,
-            currentPath: filePath,
-            operation: 'READ'
+            percentage: Math.floor((processedBytes / fileSize) * 100),
+            details: {
+              currentPath: filePath,
+              operation: 'READ'
+            }
           })
         }
         callback(chunk)
       })
 
       await new Promise((resolve, reject) => {
-        readStream.on('end', resolve)
+        readStream.on('end', () => resolve(undefined))
         readStream.on('error', reject)
       })
     } catch (error) {
@@ -138,16 +141,18 @@ export class FileStream {
     options: FileStreamOptions = {}
   ): Promise<void> {
     try {
-      const writeStream = this.createWriter(filePath, options)
+      const writeStream = this.createWriter(filePath)
       
       if (options.onProgress) {
         const totalSize = Buffer.byteLength(content)
         options.onProgress({
-          percent: 0,
-          processed: 0,
+          current: 0,
           total: totalSize,
-          currentPath: filePath,
-          operation: 'WRITE'
+          percentage: 0,
+          details: {
+            currentPath: filePath,
+            operation: 'WRITE'
+          }
         })
       }
 
@@ -159,14 +164,16 @@ export class FileStream {
             if (options.onProgress) {
               const totalSize = Buffer.byteLength(content)
               options.onProgress({
-                percent: 100,
-                processed: totalSize,
+                current: totalSize,
                 total: totalSize,
-                currentPath: filePath,
-                operation: 'WRITE'
+                percentage: 100,
+                details: {
+                  currentPath: filePath,
+                  operation: 'WRITE'
+                }
               })
             }
-            writeStream.end(resolve)
+            writeStream.end(() => resolve())
           }
         })
       })

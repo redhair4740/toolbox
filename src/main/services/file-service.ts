@@ -7,7 +7,7 @@ import { FileRenameManager } from './file/rename'
 import { EnhancedFileOperations } from './file/enhanced-operations'
 import { EnhancedSearch } from './file/enhanced-search'
 import { handleError } from '../utils/error-handler'
-import { ProgressCallback, ProgressEvent } from '../utils/progress'
+import { ProgressCallback } from '../utils/progress'
 
 export class FileService {
   private operationManager: FileOperationManager
@@ -72,7 +72,7 @@ export class FileService {
     try {
       return await this.enhancedOps.listFiles(options)
     } catch (error) {
-      throw handleError('Failed to list files', error)
+      throw handleError(error, 'Failed to list files')
     }
   }
 
@@ -88,7 +88,7 @@ export class FileService {
         isFile: stats.isFile()
       }
     } catch (error) {
-      throw handleError('Failed to get file stats', error)
+      throw handleError(error, 'Failed to get file stats')
     }
   }
 
@@ -113,7 +113,7 @@ export class FileService {
     try {
       return await this.operationManager.copyFiles(options, progressCallback as any)
     } catch (error) {
-      throw handleError('Failed to copy files', error)
+      throw handleError(error, 'Failed to copy files')
     }
   }
 
@@ -128,7 +128,7 @@ export class FileService {
     try {
       return await this.operationManager.moveFiles(options, progressCallback as any)
     } catch (error) {
-      throw handleError('Failed to move files', error)
+      throw handleError(error, 'Failed to move files')
     }
   }
 
@@ -140,7 +140,7 @@ export class FileService {
     try {
       return await this.operationManager.deleteFiles(options, progressCallback as any)
     } catch (error) {
-      throw handleError('Failed to delete files', error)
+      throw handleError(error, 'Failed to delete files')
     }
   }
 
@@ -151,7 +151,7 @@ export class FileService {
     try {
       return await fs.promises.readFile(options.path, options.encoding || 'utf8')
     } catch (error) {
-      throw handleError('Failed to read file', error)
+      throw handleError(error, 'Failed to read file')
     }
   }
 
@@ -164,7 +164,7 @@ export class FileService {
       await fs.promises.writeFile(options.path, options.content, options.encoding)
       return true
     } catch (error) {
-      throw handleError('Failed to write file', error)
+      throw handleError(error, 'Failed to write file')
     }
   }
 
@@ -183,7 +183,7 @@ export class FileService {
     try {
       return await this.searchManager.searchInFiles(options, progressCallback as any)
     } catch (error) {
-      throw handleError('Failed to search in files', error)
+      throw handleError(error, 'Failed to search in files')
     }
   }
 
@@ -195,7 +195,7 @@ export class FileService {
     try {
       return await this.enhancedSearch.quickSearch(options)
     } catch (error) {
-      throw handleError('Failed to perform quick search', error)
+      throw handleError(error, 'Failed to perform quick search')
     }
   }
 
@@ -204,7 +204,7 @@ export class FileService {
       await this.searchManager.cancelSearch()
       return true
     } catch (error) {
-      throw handleError('Failed to cancel search', error)
+      throw handleError(error, 'Failed to cancel search')
     }
   }
 
@@ -223,7 +223,7 @@ export class FileService {
     try {
       return await this.renameManager.previewRename(options)
     } catch (error) {
-      throw handleError('Failed to preview rename', error)
+      throw handleError(error, 'Failed to preview rename')
     }
   }
 
@@ -239,7 +239,7 @@ export class FileService {
     try {
       return await this.renameManager.renameFiles(options, progressCallback)
     } catch (error) {
-      throw handleError('Failed to rename files', error)
+      throw handleError(error, 'Failed to rename files')
     }
   }
 
@@ -270,7 +270,7 @@ export class FileService {
 
       return result.filePaths
     } catch (error) {
-      throw handleError('Failed to show path selection dialog', error)
+      throw handleError(error, 'Failed to show path selection dialog')
     }
   }
 
@@ -299,7 +299,7 @@ export class FileService {
 
       return null
     } catch (error) {
-      throw handleError('Failed to save file', error)
+      throw handleError(error, 'Failed to save file')
     }
   }
 
@@ -309,7 +309,7 @@ export class FileService {
       await this.operationManager.cancelOperation()
       return true
     } catch (error) {
-      throw handleError('Failed to cancel operation', error)
+      throw handleError(error, 'Failed to cancel operation')
     }
   }
 
@@ -325,7 +325,7 @@ export class FileService {
         pattern: extensions.length ? `*.{${extensions.join(',')}}` : undefined
       }, progressCallback as any)
     } catch (error) {
-      throw handleError('Failed to search files', error)
+      throw handleError(error, 'Failed to search files')
     }
   }
   
@@ -338,7 +338,7 @@ export class FileService {
         conflictStrategy: 'overwrite'
       })
     } catch (error) {
-      throw handleError('Failed to move file', error)
+      throw handleError(error, 'Failed to move file')
     }
   }
   
@@ -350,12 +350,9 @@ export class FileService {
   ) {
     try {
       // 如果指定了文件类型过滤器，先过滤文件
-      let filesToProcess = files;
+      const filesToProcess = files;
       
       if (fileTypeFilter && fileTypeFilter.length > 0) {
-        // 获取所有支持的扩展名
-        const filterIds = await this.getExtensionsFromFileTypes(fileTypeFilter);
-        
         // 简化实现，直接使用ID列表，不进行额外的过滤
         // 实际过滤将由前端完成
       }
@@ -366,19 +363,8 @@ export class FileService {
         conflictStrategy: 'overwrite'
       }, progressCallback as any);
     } catch (error) {
-      throw handleError('Failed to batch move files', error as Error);
+      throw handleError(error, 'Failed to batch move files');
     }
-  }
-  
-  // 根据文件类型ID获取对应的文件扩展名
-  private async getExtensionsFromFileTypes(fileTypeIds: string[]): Promise<string[]> {
-    // 简化实现，如果没有指定文件类型，则返回空数组
-    if (!fileTypeIds || fileTypeIds.length === 0) {
-      return [];
-    }
-    
-    // 直接传递文件类型ID，让主进程/渲染器进程处理实际文件类型匹配
-    return fileTypeIds;
   }
   
   async cleanup() {
@@ -387,7 +373,7 @@ export class FileService {
       await this.operationManager.cancelOperation()
       return true
     } catch (error) {
-      throw handleError('Failed to cleanup resources', error)
+      throw handleError(error, 'Failed to cleanup resources')
     }
   }
 }

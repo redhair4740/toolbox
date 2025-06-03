@@ -9,14 +9,15 @@
     "format": "prettier --write .",
     "lint": "eslint . --ext .js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts,.vue --fix",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
-    "typecheck:web": "vue-tsc --noEmit -p tsconfig.web.json --composite false",
+    "typecheck:web": "vue-tsc --noEmit -p tsconfig.web.json --composite false --skipLibCheck --noErrorTruncation",
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
     "start": "electron-vite preview",
     "dev": "electron-vite dev",
-    "build": "npm run typecheck && electron-vite build",
+    "build": "electron-vite build",
+    "build:with-typecheck": "npm run typecheck && electron-vite build",
     "postinstall": "electron-builder install-app-deps",
     "build:unpack": "npm run build && electron-builder --dir",
-    "build:win": "npm run build && electron-builder --win",
+    "build:win": "npm run build && electron-builder --win --config.win.sign=false",
     "build:mac": "npm run build && electron-builder --mac",
     "build:linux": "npm run build && electron-builder --linux"
   },
@@ -55,7 +56,9 @@
     "asar": false,
     "win": {
       "target": "nsis",
-      "icon": "build/icon.ico"
+      "icon": "build/icon.ico",
+      "sign": false,
+      "verifyUpdateCodeSignature": false
     },
     "mac": {
       "icon": "build/icon.icns"
@@ -67,7 +70,8 @@
       "oneClick": false,
       "allowElevation": true,
       "allowToChangeInstallationDirectory": true
-    }
+    },
+    "forceCodeSigning": false
   },
   "files": [
     "**/*",

@@ -439,12 +439,13 @@ const showFileList = async () => {
       path: file.path,
       directory: pathUtils.dirname(file.path),
       size: file.size,
-      modifiedTime: formatDate(file.modifiedTime)
+      modifiedTime: formatDate(file.modified || '')
     }))
     
     addLog(`已加载 ${fileList.value.length} 个符合条件的文件`, 'info')
   } catch (error) {
-    addLog(`获取文件列表失败: ${error.message}`, 'error')
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    addLog(`获取文件列表失败: ${errorMessage}`, 'error')
     ElMessage.error('获取文件列表失败')
   } finally {
     isLoadingFileList.value = false
@@ -521,7 +522,8 @@ const handleSourceSelect = async (sourcePath: string | string[]) => {
     // 更新目标路径预览
     updateTargetPreview()
   } catch (error) {
-    addLog(`获取文件信息失败: ${error.message}`, 'error')
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    addLog(`获取文件信息失败: ${errorMessage}`, 'error')
     ElMessage.error('获取文件信息失败')
   }
 }
@@ -625,16 +627,16 @@ const executeOperation = async () => {
       const operationConfig = {
         files: fileList.map(file => file.path), // 使用文件路径列表而不是目录
         targetPath: formData.targetPath,
-        conflictStrategy: formData.conflictStrategy,
+        conflictStrategy: formData.conflictStrategy as 'ask' | 'overwrite' | 'skip' | 'rename',
         preserveStructure: formData.preserveStructure,
         overwriteConfirm: formData.overwriteConfirm
       };
       
       // 设置进度回调
-      const progressCallback = (current: number, total: number, filePath: string) => {
-        progress.current = current;
-        progress.total = total;
-        progress.currentFile = filePath;
+      const progressCallback = (progressData: { current: number; total: number; file: string }) => {
+        progress.current = progressData.current;
+        progress.total = progressData.total;
+        progress.currentFile = progressData.file;
       };
       
       // 执行操作
@@ -651,15 +653,17 @@ const executeOperation = async () => {
       // 重置表单
       resetForm();
     } catch (error) {
-      addLog(`操作失败: ${error.message}`, 'error');
-      ElMessage.error(`操作失败: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      addLog(`操作失败: ${errorMessage}`, 'error');
+      ElMessage.error(`操作失败: ${errorMessage}`);
     } finally {
       isLoadingFileList.value = false;
       isProcessing.value = false;
     }
   } catch (error) {
-    addLog(`操作失败: ${error.message}`, 'error');
-    ElMessage.error(`操作失败: ${error.message}`);
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    addLog(`操作失败: ${errorMessage}`, 'error');
+    ElMessage.error(`操作失败: ${errorMessage}`);
   }
 }
 
@@ -670,7 +674,8 @@ const cancelOperation = async () => {
     addLog('操作已取消', 'warning')
     ElMessage.warning('操作已取消')
   } catch (error) {
-    addLog(`取消操作失败: ${error.message}`, 'error')
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    addLog(`取消操作失败: ${errorMessage}`, 'error')
   } finally {
     isProcessing.value = false
   }

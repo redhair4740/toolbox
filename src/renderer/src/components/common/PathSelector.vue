@@ -166,7 +166,7 @@ const openNativeDialog = async () => {
       properties.push('openFile')
     } else if (props.type === 'save') {
       // 使用保存对话框
-      const result = await window.electron.ipcRenderer.invoke('select-save-path', {
+      const result = await (window as any).electron.ipcRenderer?.invoke('select-save-path', {
         title: props.dialogTitle || '保存文件',
         defaultPath: localPath.value,
         filters: props.filters.map(ext => ({ 
@@ -191,7 +191,7 @@ const openNativeDialog = async () => {
     }
     
     // 调用主进程打开对话框
-    const paths = await window.electron.ipcRenderer.invoke('select-path', {
+    const paths = await (window as any).electron.ipcRenderer?.invoke('select-path', {
       title: props.dialogTitle || (props.type === 'directory' ? '选择文件夹' : '选择文件'),
       defaultPath: localPath.value ? localPath.value.split(';')[0] : '',
       filters: props.type === 'file' ? props.filters.map(ext => ({ 

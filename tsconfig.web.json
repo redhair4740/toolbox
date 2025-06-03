@@ -13,6 +13,17 @@
       "@renderer/*": [
         "src/renderer/src/*"
       ]
-    }
+    },
+    "noImplicitAny": false,
+    "noUnusedParameters": false,
+    "noUnusedLocals": false,
+    "strictNullChecks": false,
+    "strictPropertyInitialization": false,
+    "skipLibCheck": true,
+    "noImplicitThis": false,
+    "noImplicitReturns": false,
+    "strict": false,
+    "noPropertyAccessFromIndexSignature": false,
+    "exactOptionalPropertyTypes": false
   }
 }

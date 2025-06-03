@@ -2,10 +2,11 @@ import { ref } from 'vue'
 
 // 日志类型定义
 interface OperationLog {
-  time: number
+  time: Date
   category: string
   type: 'info' | 'success' | 'warning' | 'error'
   message: string
+  details?: string | object
 }
 
 // 最大日志条数
@@ -19,13 +20,15 @@ export function useOperationLog() {
   const addLog = (
     category: string,
     message: string,
-    type: OperationLog['type'] = 'info'
+    type: OperationLog['type'] = 'info',
+    details?: string | object
   ) => {
     const log: OperationLog = {
-      time: Date.now(),
+      time: new Date(),
       category,
       type,
-      message
+      message,
+      details
     }
 
     logs.value.unshift(log)
@@ -75,10 +78,11 @@ export function useOperationLog() {
   // 导出日志
   const exportLogs = () => {
     const exportData = logs.value.map(log => ({
-      time: new Date(log.time).toISOString(),
+      time: log.time.toISOString(),
       category: log.category,
       type: log.type,
-      message: log.message
+      message: log.message,
+      details: log.details
     }))
 
     return JSON.stringify(exportData, null, 2)
@@ -87,7 +91,14 @@ export function useOperationLog() {
   // 保存日志到本地存储
   const saveLogsToStorage = () => {
     try {
-      localStorage.setItem('operation_logs', JSON.stringify(logs.value))
+      const serializedLogs = logs.value.map(log => ({
+        time: log.time.toISOString(),
+        category: log.category,
+        type: log.type,
+        message: log.message,
+        details: log.details
+      }))
+      localStorage.setItem('operation_logs', JSON.stringify(serializedLogs))
     } catch (error) {
       console.error('Failed to save logs to storage:', error)
     }
@@ -98,7 +109,17 @@ export function useOperationLog() {
     try {
       const savedLogs = localStorage.getItem('operation_logs')
       if (savedLogs) {
-        logs.value = JSON.parse(savedLogs)
+        const parsedLogs = JSON.parse(savedLogs) as {
+          time: string
+          category: string
+          type: 'info' | 'success' | 'warning' | 'error'
+          message: string
+          details?: string | object
+        }[]
+        logs.value = parsedLogs.map(log => ({
+          ...log,
+          time: new Date(log.time)
+        }))
       }
     } catch (error) {
       console.error('Failed to load logs from storage:', error)

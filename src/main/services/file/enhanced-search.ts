@@ -92,7 +92,7 @@ export class EnhancedSearch {
       results.sort((a, b) => b.score - a.score)
       return results.slice(0, maxResults)
     } catch (error) {
-      throw handleError('Failed to perform quick search', error)
+      throw handleError(error, 'Failed to perform quick search')
     }
   }
 
@@ -244,7 +244,7 @@ export class EnhancedSearch {
 
       return results
     } catch (error) {
-      throw handleError('Failed to search files', error)
+      throw handleError(error, 'Failed to search files')
     }
   }
 
@@ -374,7 +374,7 @@ export class EnhancedSearch {
 
       return stats
     } catch (error) {
-      throw handleError('Failed to build index', error)
+      throw handleError(error, 'Failed to build index')
     }
   }
 
@@ -445,7 +445,7 @@ export class EnhancedSearch {
       results.sort((a, b) => b.score - a.score)
       return results.slice(0, maxResults)
     } catch (error) {
-      throw handleError('Failed to search with index', error)
+      throw handleError(error, 'Failed to search with index')
     }
   }
 
@@ -613,7 +613,7 @@ export class EnhancedSearch {
       await traverseDirectory(directory, directory)
       return results
     } catch (error) {
-      throw handleError('Failed to perform advanced search', error)
+      throw handleError(error, 'Failed to perform advanced search')
     }
   }
 }

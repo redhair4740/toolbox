@@ -208,7 +208,7 @@ const exportLogs = async () => {
     }.txt`
     
     // 调用保存文件API
-    await window.electron.fileService.saveTextFile({
+    await (window as any).electron.fileService?.saveTextFile({
       content: logContent,
       fileName: fileName,
       title: '保存日志文件'
@@ -216,7 +216,8 @@ const exportLogs = async () => {
     
     ElMessage.success('日志导出成功')
   } catch (error) {
-    ElMessage.error(`导出日志失败: ${error.message}`)
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    ElMessage.error(`导出日志失败: ${errorMessage}`)
   }
 }
 

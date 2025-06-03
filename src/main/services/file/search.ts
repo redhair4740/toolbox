@@ -2,7 +2,6 @@ import fs from 'fs'
 import path from 'path'
 import { EventEmitter } from 'events'
 import { WorkerPool } from '../../utils/worker-pool'
-import { createReadStream } from '../../utils/file-stream'
 import { ProgressCallback } from '../../utils/progress'
 import { handleError } from '../../utils/error-handler'
 
@@ -12,13 +11,15 @@ import { handleError } from '../../utils/error-handler'
  */
 export class FileSearchManager extends EventEmitter {
   private isCancelled: boolean = false
-  private workerPool: WorkerPool
+  private workerPool: WorkerPool | null = null
   private readonly MAX_FILE_SIZE: number = 100 * 1024 * 1024 // 100MB
   private readonly CONTEXT_LINES: number = 2 // 匹配上下文行数
 
   constructor() {
     super()
-    this.workerPool = new WorkerPool()
+    // 临时禁用WorkerPool
+    // const workerScript = path.join(__dirname, 'search-worker.js')
+    // this.workerPool = new WorkerPool(workerScript)
   }
 
   /**
@@ -33,7 +34,6 @@ export class FileSearchManager extends EventEmitter {
     caseSensitive?: boolean
     useRegex?: boolean
     maxFileSize?: number
-    threads?: number
   }, progressCallback?: ProgressCallback): Promise<Array<{
     filePath: string
     matches: Array<{
@@ -60,13 +60,14 @@ export class FileSearchManager extends EventEmitter {
       recursive = true,
       caseSensitive = false,
       useRegex = false,
-      maxFileSize = this.MAX_FILE_SIZE,
-      threads = 4
+      maxFileSize = this.MAX_FILE_SIZE
     } = options
 
     try {
-      // 设置worker池大小
-      this.workerPool.setMaxWorkers(threads)
+      // 设置worker池大小 - 临时禁用
+      // if (this.workerPool) {
+      //   this.workerPool.setMaxWorkers(threads)
+      // }
 
       // 准备搜索正则表达式
       let searchRegex: RegExp
@@ -74,7 +75,8 @@ export class FileSearchManager extends EventEmitter {
         try {
           searchRegex = new RegExp(content, caseSensitive ? 'g' : 'gi')
         } catch (error) {
-          throw new Error(`Invalid regular expression: ${error.message}`)
+          const errorMessage = error instanceof Error ? error.message : String(error)
+          throw new Error(`Invalid regular expression: ${errorMessage}`)
         }
       } else {
         const escapedContent = content.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -117,7 +119,12 @@ export class FileSearchManager extends EventEmitter {
           if (progressCallback) {
             matchesFound += fileMatches.length
             const percentage = Math.floor((searched / files.length) * 100)
-            progressCallback(searched, files.length, file, percentage)
+            progressCallback({
+              current: searched,
+              total: files.length,
+              percentage: percentage,
+              details: { file, matches: matchesFound }
+            })
             this.emit('progress', {
               percentage,
               searched,
@@ -140,17 +147,18 @@ export class FileSearchManager extends EventEmitter {
         return null
       })
 
-      // 执行搜索任务
-      const searchResults = await this.workerPool.runTasks(tasks)
+      // 执行搜索任务 - 临时实现
+      // const searchResults = await this.workerPool.runTasks(tasks)
+      const searchResults = await Promise.all(tasks.map(task => task()))
 
       // 过滤有效结果并添加到结果列表
       searchResults.filter(Boolean).forEach(result => {
-        results.push(result)
+        if (result) results.push(result)
       })
 
       return results
     } catch (error) {
-      throw handleError('Failed to search in files', error)
+      throw handleError(error, 'Failed to search in files')
     }
   }
 
