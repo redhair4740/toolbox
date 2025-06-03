@@ -7,11 +7,6 @@
         clearable
         :disabled="disabled"
       >
-        <template #prepend>
-          <el-icon>
-            <component :is="icon" />
-          </el-icon>
-        </template>
         <template #append>
           <div class="path-buttons-container">
             <el-button @click="openNativeDialog">
@@ -71,8 +66,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
-import { Folder, Document, Close, Clock, Delete } from '@element-plus/icons-vue'
+import { ref, watch } from 'vue'
+import { Folder, Close, Clock, Delete } from '@element-plus/icons-vue'
 import { ElMessageBox } from 'element-plus'
 import { useRecentPaths } from '../../composables/useRecentPaths'
 
@@ -158,11 +153,6 @@ const formatPath = (fullPath: string) => {
   // 一般路径
   return '.../' + pathParts.slice(-1)[0];
 }
-
-// 计算属性：图标
-const icon = computed(() => {
-  return props.type === 'directory' ? Folder : Document
-})
 
 // 打开原生对话框
 const openNativeDialog = async () => {
